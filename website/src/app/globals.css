@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-olive-950: #0A100A;
+  --color-olive-900: #141A14;
+  --color-olive-800: #1C2B1E;
+  --color-olive-700: #243028;
+  --color-olive-600: #2E3D30;
+  --color-olive-500: #4A6741;
+
+  --color-beige-900: #8B6E4E;
+  --color-beige-700: #A8896A;
+  --color-beige-500: #C4A882;
+  --color-beige-400: #D4B896;
+  --color-beige-300: #E0CAB0;
+  --color-beige-100: #F0E6D3;
+
+  --color-sage-700: #5C6B58;
+  --color-sage-500: #7A8A76;
+  --color-sage-300: #9BA897;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-poppins: 'Poppins', sans-serif;
+  --font-mono-data: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  :root {
+    /* backgrounds */
+    --bg-base:       #141A14;
+    --bg-surface:    #1C2B1E;
+    --bg-elevated:   #243028;
+    --bg-sidebar:    #1A2620;
+    --bg-input:      #111811;
+
+    /* beige accent system */
+    --beige-primary: #D4B896;
+    --beige-hover:   #C4A882;
+    --beige-muted:   #A8896A;
+    --beige-subtle:  rgba(212,184,150,0.08);
+    --beige-border:  rgba(212,184,150,0.15);
+
+    /* olive accent */
+    --olive-mid:     #4A6741;
+    --olive-bright:  #5B7F52;
+    --olive-border:  rgba(74,103,65,0.3);
+
+    /* text */
+    --text-primary:  #F0E6D3;
+    --text-secondary: #9BA897;
+    --text-muted:    #5C6B58;
+    --text-beige:    #D4B896;
+
+    /* status */
+    --red:           #E05252;
+    --red-glow:      rgba(224,82,82,0.2);
+    --amber:         #D4943A;
+    --green:         #4CAF78;
+    --green-glow:    rgba(76,175,120,0.15);
+    --blue:          #5B9BD5;
+    --purple:        #9B7EC8;
+
+    /* special effects */
+    --card-shadow:       0 4px 24px rgba(0,0,0,0.5);
+    --card-hover-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    --beige-glow:        0 0 20px rgba(212,184,150,0.15);
+    --critical-glow:     0 0 24px rgba(224,82,82,0.3);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body { 
+  background-color: var(--bg-base);
+  color: var(--text-primary); 
+  font-family: var(--font-sans);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--olive-mid); border-radius: 3px; }
+
+@keyframes livePulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.3; transform:scale(0.7); }
+}
+.live-dot { animation: livePulse 1.5s ease-in-out infinite; }
+
+@keyframes criticalCardPulse {
+  0%,100% { box-shadow: 0 4px 24px rgba(0,0,0,0.5); border-color: transparent; }
+  50% { box-shadow: 0 0 32px rgba(224,82,82,0.4), 0 4px 24px rgba(0,0,0,0.5); border-color: rgba(224,82,82,0.5); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-elevated) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes typingBounce {
+  0%,100% { transform:translateY(0); opacity:0.4; }
+  50% { transform:translateY(-6px); opacity:1; }
+}
+
+@keyframes bpmPulse {
+  0%,100% { transform:scale(1); }
+  50% { transform:scale(1.04); }
+}
+
+@keyframes alertSlideIn {
+  from { transform:translateX(-100%); opacity:0; }
+  to { transform:translateX(0); opacity:1; }
+}
+
+/* Base Components */
+.card-style {
+  background: var(--bg-surface);
+  border: 1px solid var(--beige-border);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #D4B896, #C4A882);
+  color: #141A14;
+  border-radius: 12px;
+  font-weight: 600;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Aggressive Clerk UI Overrides */
+.cl-socialButtonsBlockButtonText {
+  color: #D4B896 !important;
+}
+
+.cl-formFieldInput {
+  color: #F0E6D3 !important;
+}
+
+.cl-formFieldInput::placeholder {
+  color: #D4B896 !important;
+  opacity: 0.8 !important;
+}
+
+.cl-socialButtonsProviderIcon__apple {
+  filter: invert(1) !important;
+}
+
+.cl-headerTitle, .cl-headerSubtitle, .cl-dividerText {
+  color: #D4B896 !important;
+}
+
+.cl-formFieldLabel, .cl-formFieldLabelRow, .cl-formFieldAction, .cl-footerActionText, .cl-footerActionLink {
+  color: #D4B896 !important;
+}
+
+[class*="badge"],
+[class*="Badge"],
+.cl-badge {
+  color: #D4B896 !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #C4A882 !important;
+}
+

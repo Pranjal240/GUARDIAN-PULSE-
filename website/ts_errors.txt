@@ -1,0 +1,25 @@
+﻿src/components/EcgChart.tsx(41,15): error TS2322: Type '(v: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(v: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'v' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/lib/hooks.ts(27,32): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(firestore: Firestore, path: string, ...pathSegments: string[]): CollectionReference<DocumentData, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'Firestore'.
+      Property 'toJSON' is missing in type 'Database' but required in type 'Firestore'.
+  Overload 2 of 3, '(reference: CollectionReference<unknown, DocumentData>, path: string, ...pathSegments: string[]): CollectionReference<DocumentData, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'CollectionReference<unknown, DocumentData>'.
+      Type 'Database' is missing the following properties from type 'CollectionReference<unknown, DocumentData>': id, path, parent, withConverter, and 2 more.
+  Overload 3 of 3, '(reference: DocumentReference<unknown, DocumentData>, path: string, ...pathSegments: string[]): CollectionReference<DocumentData, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'DocumentReference<unknown, DocumentData>'.
+      Type 'Database' is missing the following properties from type 'DocumentReference<unknown, DocumentData>': converter, firestore, id, path, and 3 more.
+src/lib/hooks.ts(59,24): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(firestore: Firestore, path: string, ...pathSegments: string[]): DocumentReference<DocumentData, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'Firestore'.
+      Property 'toJSON' is missing in type 'Database' but required in type 'Firestore'.
+  Overload 2 of 3, '(reference: CollectionReference<unknown, DocumentData>, path?: string | undefined, ...pathSegments: string[]): DocumentReference<unknown, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'CollectionReference<unknown, DocumentData>'.
+      Type 'Database' is missing the following properties from type 'CollectionReference<unknown, DocumentData>': id, path, parent, withConverter, and 2 more.
+  Overload 3 of 3, '(reference: DocumentReference<unknown, DocumentData>, path: string, ...pathSegments: string[]): DocumentReference<DocumentData, DocumentData>', gave the following error.
+    Argument of type 'Database' is not assignable to parameter of type 'DocumentReference<unknown, DocumentData>'.
+      Type 'Database' is missing the following properties from type 'DocumentReference<unknown, DocumentData>': converter, firestore, id, path, and 3 more.

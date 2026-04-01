@@ -1,0 +1,56 @@
+# Guardian Pulse — .gitignore
+
+# ── Node / Backend ──────────────────────────────
+node_modules/
+.wrangler/
+*.log
+
+# ── Flutter / Dart ──────────────────────────────
+.dart_tool/
+.packages
+build/
+*.g.dart
+*.freezed.dart
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+ios/Pods/
+ios/Runner.xcworkspace/
+android/.gradle/
+android/local.properties
+android/app/google-services.json
+
+# ── Python / Pi ─────────────────────────────────
+__pycache__/
+*.pyc
+.env
+venv/
+
+# ── Keys / Secrets ──────────────────────────────
+*.env
+keys.env
+.dev.vars
+backend/.dev.vars
+backend/put-secrets.js
+steps/keys.env
+.env.local
+.env.production
+google-services.json
+GoogleService-Info.plist
+firebase-service-account.json
+service-account-key.json
+*firebase-adminsdk*.json
+*-fbsvc-*.json
+
+# ── IDE ─────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Next.js / Website ──────────────────────────
+.next/
+out/
+.vercel/

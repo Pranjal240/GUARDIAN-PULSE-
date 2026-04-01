@@ -1,0 +1,26 @@
+name = "guardian-pulse-api"
+main = "src/index.js"
+compatibility_date = "2024-03-18"
+
+[triggers]
+crons = ["* * * * *"]  # Runs every minute — alert escalation check
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "guardian-pulse-media"
+
+# Secrets (set via: wrangler secret put <NAME>)
+# FIREBASE_CLIENT_EMAIL      ← <FIREBASE_CLIENT_EMAIL>
+# FIREBASE_PRIVATE_KEY       ← <FIREBASE_PRIVATE_KEY>
+# CLERK_JWKS_URL             ← <CLERK_JWKS_URL>
+# RESEND_API_KEY             ← <RESEND_API_KEY>
+# GEMINI_API_KEY             ← <GEMINI_API_KEY>
+# TWILIO_ACCOUNT_SID         ← <TWILIO_ACCOUNT_SID>
+# TWILIO_AUTH_TOKEN          ← <TWILIO_AUTH_TOKEN>
+# TWILIO_PHONE               ← <TWILIO_PHONE>
+# PI_SECRET                  ← <PI_SECRET>
+# R2_PUBLIC_URL              ← https://pub-xxxxx.r2.dev (after creating bucket)
+
+[vars]
+FIREBASE_PROJECT_ID = "guardian-pulse-1360c"
+ENVIRONMENT = "production"

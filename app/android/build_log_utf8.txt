@@ -1,0 +1,119 @@
+﻿> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Configure project :app
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\Users\pranj\AppData\Local\Android\sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+
+> Task :app:DebugMinSdkCheck
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :app:compileFlutterBuildDebug
+.\gradlew.bat : Invalid depfile: C:\User
+s\pranj\OneDrive\Documents\CODING\GUARDI
+AN PULSE\app\.dart_tool\flutter_build\d8
+6a94ad39cd3b8e4095bcc1e52202e2\kernel_sn
+apshot_program.d
+At line:1 char:63
++ ... Android Studio\jbr"; 
+.\gradlew.bat assembleDebug > 
+build_log.txt 2>&1
++                          ~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Invalid depfile...pshot_progr  
+  am.d:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+Invalid depfile: C:\Users\pranj\OneDrive
+\Documents\CODING\GUARDIAN PULSE\app\.da
+rt_tool\flutter_build\d86a94ad39cd3b8e40
+95bcc1e52202e2\kernel_snapshot_program.d
+Error: unable to locate asset entry in 
+pubspec.yaml: 
+"assets/fonts/Poppins-Regular.ttf".
+Target debug_android_application 
+failed: Exception: Failed to bundle 
+asset files.
+
+
+> Task :app:compileFlutterBuildDebug FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/pranj/OneDrive/Documents/CODING/GUARDIAN%20PULSE/app/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task 
+':app:compileFlutterBuildDebug'.
+> Process 'command 
+'C:\flutter\bin\flutter.bat'' finished 
+with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get 
+the stack trace.
+> Run with --info or --debug option to 
+get more log output.
+> Run with --scan to get full insights.
+> Get more help at 
+https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 13s
+6 actionable tasks: 2 executed, 4 up-to-date
