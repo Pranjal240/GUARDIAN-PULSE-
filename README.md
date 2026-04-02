@@ -57,6 +57,22 @@ When an acute anomaly is detected, automated defense systems are triggered immed
 
 ---
 
+## 📥 Cloning & Access
+
+While this repository operates under a **View Only** license, you can clone the source code locally for code review, inspection, and architectural analysis:
+
+**Using Git (HTTPS):**
+```bash
+git clone https://github.com/Pranjal240/GUARDIAN-PULSE-.git
+```
+
+**Using GitHub CLI:**
+```bash
+gh repo clone Pranjal240/GUARDIAN-PULSE-
+```
+
+---
+
 ## 📂 Project Structure
 
 The monorepo structure is organized to separate concerns across edge, backend, and frontend applications:
