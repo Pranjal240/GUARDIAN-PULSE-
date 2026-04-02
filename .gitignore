@@ -54,3 +54,5 @@ Thumbs.db
 .next/
 out/
 .vercel/
+
+.vercel

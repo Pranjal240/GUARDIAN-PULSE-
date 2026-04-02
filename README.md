@@ -1,4 +1,4 @@
-# Guardian Pulse
+# 🛡️ Guardian Pulse
 
 **Domain:** [www.guardianpulse.in](https://www.guardianpulse.in)
 
@@ -17,57 +17,94 @@
 **Guardian Pulse** is a proactive, life-saving predictive health monitoring platform. Far beyond a step counter, it is an advanced IoT, Web, and Mobile application ecosystem meticulously designed for remote emergency health tracking.
 
 The platform specializes in detecting life-threatening physiological events such as:
-- **Heart Attacks / Cardiac Abnormalities:** Continuously tracking ECG patterns.
-- **Seizure Attacks:** Identifying high-frequency, sudden, irregular body tremors.
-- **PTSD / Panic Attacks:** Detecting sudden, severe spikes in physiological stress metrics.
+- 🫀 **Heart Attacks / Cardiac Abnormalities:** Continuously tracking ECG patterns.
+- 🧠 **Seizure Attacks:** Identifying high-frequency, sudden, irregular body tremors.
+- 🫁 **PTSD / Panic Attacks:** Detecting sudden, severe spikes in physiological stress metrics.
 
 ---
 
-## 🧠 Core System Workflow & Data Flow
+## 🏗️ System Architecture & Data Flow
 
-Guardian Pulse employs a highly structured and optimized multi-layered IoT pipeline:
+Guardian Pulse employs a highly structured and optimized multi-layered IoT pipeline to ensure ultra-low latency alerts:
 
-1. **Sensing Layer (Data Collection):**
-   - **Hardware Input:** A Raspberry Pi 4B acts as the edge device, interfacing with an **ECG sensor (AD8232)** and a **Motion/Tremor sensor (MPU6050)**.
-2. **Edge Processing (Microcontroller):**
-   - The microcontroller filters and preliminary processes the raw sensor noise.
-   - Using diagnostic rules heavily inspired by **trained MIT research datasets (MIT-BIH Arrhythmia Database)**, it ensures high-accuracy base metrics.
-3. **Transmission Layer:**
-   - The verified telemetry data is published every single second using the lightweight **MQTT protocol** to a **HiveMQ Cloud Broker**.
-4. **Backend Processing & Cloud Analytics:**
-   - **Cloudflare Workers** (edge functions) act as the system's brain. They ingest data, finalize anomaly detection (e.g. ECG arrhythmias, tremor signatures), and run the immediate alert logic.
-   - Processed events and historical health logs are immediately written to **Firebase Firestore** and **Cloudflare R2** for fast, reliable storage.
-5. **Presentation Layer (App & Web):**
-   - **Mobile App (Flutter):** Provides users and family members continuous monitoring, graphical dashboards, and settings.
-   - **Admin Dashboard (Next.js):** Hosted over Vercel, providing analytical views for caretakers or administrators.
-6. **Emergency & Alerting Protocol:**
-   - When an acute anomaly (like a seizure or heart attack) is detected, automated systems are triggered.
-   - **Firebase FCM** sends instant Push Notifications to the designated family members.
-   - **Resend** fires emergency priority emails.
-   - **Twilio** triggers SMS and voice calls.
-   - **Live Location Tracing:** Tracks the patient continuously allowing direct integration for **calling ambulances** or routing responders directly to the patient's coordinates.
-7. **AI & Support:**
-   - An intelligent **Gemini 1.5 Flash Chatbot with RAG** architecture empowers users to understand symptom histories and query past health logs contextually.
+### 1. Sensing Layer (Data Collection)
+- **Hardware Input:** A Raspberry Pi 4B acts as the edge device, interfacing with an **ECG sensor (AD8232)** and a **Motion/Tremor sensor (MPU6050)**.
+
+### 2. Edge Processing (Microcontroller)
+- The local processor filters and performs preliminary noise-reduction on the raw sensor data.
+- Diagnostic rules—highly inspired by **MIT-BIH Arrhythmia Database** research—ensure high-accuracy base metrics before they leave the edge.
+
+### 3. Transmission Layer
+- Telemetry data is published every computing second using the lightweight **MQTT protocol** to a **HiveMQ Cloud Broker**, ensuring reliable IoT message delivery.
+
+### 4. Backend Processing & Cloud Analytics
+- **Cloudflare Workers** (serverless edge functions) act as the system's analytical brain. They ingest data from the broker, execute anomaly detection algorithms (e.g., ECG arrhythmias, tremor signatures), and run immediate alert logic.
+- Processed events and historical health logs are instantly written to **Firebase Firestore** and **Cloudflare R2** for fast, reliable, and scalable storage.
+
+### 5. Presentation Layer (App & Web)
+- **📱 Mobile App (Flutter):** Provides users and family members continuous monitoring, graphical dashboards, and settings management.
+- **🌐 Admin Dashboard (Next.js):** Hosted on Vercel, providing comprehensive analytical views and patient management for caretakers or medical administrators.
+
+### 6. Emergency & Alerting Protocol
+When an acute anomaly is detected, automated defense systems are triggered immediately:
+- 🔔 **Firebase FCM:** Sends instant Push Notifications to designated family members.
+- 📧 **Resend:** Fires off emergency priority emails.
+- 📞 **Twilio:** Triggers immediate SMS alerts and automated voice calls.
+- 📍 **Live Location Tracing:** Tracks the patient continuously, allowing direct integration for **calling ambulances** or routing first responders directly to the patient's coordinates.
+
+### 7. AI Diagnostics & Support
+- An intelligent **Gemini 1.5 Flash Chatbot with RAG** architecture empowers users to understand symptom histories, analyze health trends, and query past health logs contextually.
 
 ---
 
 ## 📂 Project Structure
 
-```
+The monorepo structure is organized to separate concerns across edge, backend, and frontend applications:
+
+```text
 guardian-pulse/
-├── 📱 app/                    ← Flutter Mobile App (Android/iOS)
-├── 🌐 website/                ← Next.js Admin Dashboard (www.guardianpulse.in)
+├── 📱 app/                    ← Flutter Mobile App
+│   ├── lib/                   # Dart source code (UI, State, Services)
+│   ├── android/               # Android-specific build files
+│   └── ios/                   # iOS-specific build files
+├── 🌐 website/                ← Next.js Admin Dashboard
+│   ├── src/                   # React components, Next.js App Router, utilities
+│   ├── public/                # Static assets
+│   └── scripts/               # Build and setup scripts
 ├── ⚙️ backend/                ← Cloudflare Workers Edge Functions
-├── 🍓 raspberry-pi/           ← Python Edge Computing & MQTT Publishing
-└── 📄 docs/ & steps/          ← Internal Architectural Planning and Documentation
+│   ├── src/                   # Serverless edge function logic
+│   └── wrangler.toml          # Cloudflare deployment configuration
+├── 🍓 raspberry-pi/           ← Edge Computing & MQTT
+│   └── sensor_publisher.py    # Python script for ECG & Motion data publishing
+├── 📄 docs/                   ← Internal Project Documentation
+└── 📄 steps/                  ← Architectural Planning & Setup Steps
 ```
+
+---
 
 ## 🛠️ Tech Stack & Integrations
 
-- **IoT Edge:** Raspberry Pi 4B, Python, MPU6050, AD8232
-- **Message Broker:** HiveMQ Cloud (MQTT)
-- **Backend Edge Computing:** Cloudflare Workers
-- **Database & Storage:** Firebase (Firestore, FCM), Cloudflare R2
-- **Front-End Clients:** Flutter (App), Next.js (Web), Vercel
-- **Authentication:** Clerk Auth
-- **AI & Integrations:** Gemini 1.5 Flash (AI), Twilio (SMS/Voice), Resend (Email)
+Our modern, resilient, and highly available technology stack includes:
+
+### Edge & IoT
+- **Hardware:** Raspberry Pi 4B, MPU6050 (Motion), AD8232 (ECG)
+- **Software:** Python IoT Client
+- **Broker:** HiveMQ Cloud (MQTT)
+
+### Backend & Cloud Infrastructure
+- **Compute:** Cloudflare Workers (Edge Serverless)
+- **Database:** Firebase (Firestore)
+- **Object Storage:** Cloudflare R2
+- **Auth:** Clerk Authentication
+
+### Frontend Platforms
+- **Mobile:** Flutter / Dart (Cross-platform Android & iOS)
+- **Web:** Next.js, React, Tailwind CSS (Hosted over Vercel)
+
+### Alerting & AI
+- **LLM / AI:** Gemini 1.5 Flash (RAG Infrastructure)
+- **Communication:** Twilio (SMS/Voice), Resend (Email), Firebase Cloud Messaging (Push)
+
+---
+
+> *Built with resilience to monitor, alert, and protect lives.*
