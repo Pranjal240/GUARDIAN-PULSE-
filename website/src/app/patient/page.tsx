@@ -3,7 +3,7 @@
 import { useUser, UserButton } from '@clerk/nextjs';
 import { usePatientECG, calculateBpmStatus, useChatMessages } from '@/lib/firebase-hooks';
 import { startDemoDataSeeder, stopDemoDataSeeder, createSupportAlert, createEmergencyAlert, seedDemoVitals, syncVitalsToFirebase } from '@/lib/demo-data-seeder';
-import { ResponsiveContainer, AreaChart, Area, YAxis, Tooltip } from 'recharts';
+import LiveECGChart from '@/components/LiveECGChart';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Phone, LifeBuoy, Activity, Send, Wind,
@@ -401,22 +401,7 @@ export default function PatientDashboard() {
               </div>
             </div>
             <div className="h-[180px] md:h-[240px] rounded-xl md:rounded-2xl bg-[#0C1210] border border-[rgba(91,155,213,0.1)] p-1.5 md:p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={ecgData}>
-                  <defs>
-                    <linearGradient id="ecgGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={sColor} stopOpacity={0.3}/>
-                      <stop offset="100%" stopColor={sColor} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <YAxis domain={['dataMin - 15', 'dataMax + 15']} hide />
-                  <Tooltip
-                    contentStyle={{ background: '#1C2B1E', border: '1px solid rgba(212,184,150,0.3)', borderRadius: '12px', color: '#F0E6D3', fontSize: '12px' }}
-                    itemStyle={{ color: '#D4B896', fontFamily: 'JetBrains Mono', fontWeight: 'bold' }}
-                  />
-                  <Area type="monotone" dataKey="bpm" stroke={sColor} strokeWidth={2.5} fill="url(#ecgGrad)" dot={false} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <LiveECGChart bpm={currentBpm} height="100%" color={sColor} bufferSize={120} />
             </div>
           </motion.div>
 

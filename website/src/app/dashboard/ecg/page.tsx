@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Heart, Activity, Settings, Bell, FileText, Phone, Zap } from 'lucide-react';
 import { useAllPatients, useLatestECGPerPatient, Patient, calculateBpmStatus, usePatientDemoVitals } from '@/lib/firebase-hooks';
 import DiagnosticReportsList from '@/components/DiagnosticReportsList';
+import LiveECGChart from '@/components/LiveECGChart';
 import { Shield } from 'lucide-react';
 import PatientECGCard from '@/components/PatientECGCard';
 import * as Tabs from '@radix-ui/react-tabs';
@@ -22,6 +23,7 @@ export default function ECGMonitorPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [ecgTimeRange, setEcgTimeRange] = useState<'LIVE' | '1H' | '24H' | '7D' | '30D'>('LIVE');
 
   const selectedPatient = patients.find(p => p.userId === selectedPatientId);
   const selectedEcgData = selectedPatientId ? (ecgMap.get(selectedPatientId) || []) : [];
@@ -177,6 +179,26 @@ export default function ECGMonitorPage() {
                          </div>
                       </div>
 
+                                            {/* Live ECG Strip */}
+                      <div className="bg-[#0C1210] rounded-2xl border border-[rgba(76,175,120,0.2)] p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-[#4CAF78]" />
+                            <span className="text-sm font-poppins font-semibold text-[#F0E6D3]">Live ECG Telemetry</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-[#1C2B1E] px-3 py-1 rounded-full border border-[rgba(76,175,120,0.3)]">
+                            <span className="w-2 h-2 rounded-full bg-[#4CAF78] animate-pulse shadow-[0_0_6px_#4CAF78]" />
+                            <span className="text-[#4CAF78] text-[10px] font-mono font-bold uppercase tracking-wider">Live</span>
+                          </div>
+                        </div>
+                        <LiveECGChart
+                          bpm={selectedEcgData.length > 0 ? selectedEcgData[selectedEcgData.length - 1].bpm : 72}
+                          height={160}
+                          color="#4CAF78"
+                          bufferSize={100}
+                        />
+                      </div>
+
                       <div className="card-style p-5">
                          <h3 className="font-poppins text-[#D4B896] mb-4 flex items-center"><Phone className="w-5 h-5 mr-2"/> Emergency Contacts</h3>
                          <div className="bg-[#111811] p-3 rounded-xl border border-[rgba(212,184,150,0.1)] flex justify-between items-center">
@@ -210,30 +232,43 @@ export default function ECGMonitorPage() {
 
                     <Tabs.Content value="ecg history" className="space-y-4 outline-none">
                        <div className="flex space-x-2 mb-4">
-                         {['LIVE', '1H', '24H', '7D', '30D'].map(p => (
-                           <button key={p} className="px-3 py-1 rounded-full text-xs font-semibold bg-[#1C2B1E] text-[#9BA897] border border-[#2A3D2E] hover:border-[#D4B896] hover:text-[#D4B896]">
+                         {(['LIVE', '1H', '24H', '7D', '30D'] as const).map(p => (
+                           <button
+                             key={p}
+                             onClick={() => setEcgTimeRange(p)}
+                             className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${ecgTimeRange === p ? 'bg-[#3D5738] text-[#D4B896] border-[#D4B896]' : 'bg-[#1C2B1E] text-[#9BA897] border-[#2A3D2E] hover:border-[#D4B896] hover:text-[#D4B896]'}`}
+                           >
                              {p}
                            </button>
                          ))}
                        </div>
                        
-                       <div className="card-style p-4 h-64 border border-[#3D5738]">
-                         <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
-                         <ResponsiveContainer width="100%" height={240} minWidth={100}>
-                           <LineChart data={selectedEcgData}>
-                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,184,150,0.1)" vertical={false} />
-                             <XAxis dataKey="timestamp" tickFormatter={(t) => format(new Date(t), 'HH:mm:ss')} stroke="#7A8A76" fontSize={12} tickMargin={10} />
-                             <YAxis domain={['auto', 'auto']} stroke="#7A8A76" fontSize={12} width={30} />
-                             <Tooltip 
-                               contentStyle={{ background: '#1C2B1E', border: '1px solid #D4B896', borderRadius: '12px', color: '#F0E6D3' }}
-                               labelFormatter={(l) => format(new Date(l), 'HH:mm:ss')}
-                             />
-                             <Line type="monotone" dataKey="bpm" stroke="#D4B896" strokeWidth={2} dot={false} isAnimationActive={false} />
-                           </LineChart>
-                         </ResponsiveContainer>
-                         </div>
-                       </div>
-                    </Tabs.Content>
+                       <div className="card-style p-4 border border-[#3D5738]" style={{ height: ecgTimeRange === 'LIVE' ? 280 : 272 }}>
+                          {ecgTimeRange === 'LIVE' ? (
+                            <LiveECGChart
+                              bpm={selectedEcgData.length > 0 ? selectedEcgData[selectedEcgData.length - 1].bpm : 72}
+                              height="100%"
+                              color="#4CAF78"
+                              bufferSize={150}
+                            />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
+                              <ResponsiveContainer width="100%" height={240} minWidth={100}>
+                                <LineChart data={selectedEcgData}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,184,150,0.1)" vertical={false} />
+                                  <XAxis dataKey="timestamp" tickFormatter={(t) => format(new Date(t), 'HH:mm:ss')} stroke="#7A8A76" fontSize={12} tickMargin={10} />
+                                  <YAxis domain={['auto', 'auto']} stroke="#7A8A76" fontSize={12} width={30} />
+                                  <Tooltip
+                                    contentStyle={{ background: '#1C2B1E', border: '1px solid #D4B896', borderRadius: '12px', color: '#F0E6D3' }}
+                                    labelFormatter={(l) => format(new Date(l), 'HH:mm:ss')}
+                                  />
+                                  <Line type="monotone" dataKey="bpm" stroke="#D4B896" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
+                        </div>
+                     </Tabs.Content>
 
                     <Tabs.Content value="alerts" className="outline-none">
                        <div className="text-center py-12">
