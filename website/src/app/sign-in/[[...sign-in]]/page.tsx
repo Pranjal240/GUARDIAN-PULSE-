@@ -5,6 +5,7 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle, Info } from 'lucide-react';
 
 export default function SignInPage() {
   const [selectedRole, setSelectedRole] = useState<'patient' | 'admin'>('patient');
@@ -14,7 +15,7 @@ export default function SignInPage() {
   }, [selectedRole]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full bg-[#141A14] relative overflow-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-[#141A14] relative overflow-hidden">
       <div className="ambient-mesh"></div>
 
       {/* LEFT PANEL */}
@@ -75,7 +76,7 @@ export default function SignInPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="w-full lg:w-[55%] bg-[#1A2218] flex flex-col justify-center items-center px-4 py-12 lg:p-8 overflow-y-auto relative z-10">
+      <div className="w-full lg:w-[55%] bg-[#1A2218] flex flex-col justify-center items-center px-4 py-8 lg:p-8 overflow-y-auto relative z-10">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -83,17 +84,47 @@ export default function SignInPage() {
           className="w-full max-w-md flex flex-col items-center"
         >
           
-          <div className="mb-8 text-center lg:hidden">
+          {/* Mobile logo */}
+          <div className="mb-6 text-center lg:hidden">
             <Image src="/logo/logo.png" alt="Guardian Pulse Logo" width={60} height={60} className="mx-auto mb-4" />
             <h2 className="font-poppins text-2xl font-bold text-[#D4B896]">Guardian Pulse</h2>
           </div>
 
-          <h2 className="font-poppins text-2xl font-semibold text-[#F0E6D3] mb-8 hidden lg:block text-center">
+          <h2 className="font-poppins text-2xl font-semibold text-[#F0E6D3] mb-6 hidden lg:block text-center">
             Sign in to your account
           </h2>
 
+          {/* ═══ DEMO WARNING BANNER ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="w-full mb-6"
+          >
+            <div className="bg-[rgba(212,148,58,0.08)] border border-[rgba(212,148,58,0.3)] rounded-2xl p-4 relative overflow-hidden">
+              {/* Animated accent bar */}
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#D4943A] to-transparent opacity-60" />
+              
+              <div className="flex items-start gap-3">
+                <div className="bg-[rgba(212,148,58,0.15)] p-2 rounded-lg shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5 text-[#D4943A]" />
+                </div>
+                <div>
+                  <p className="font-poppins font-semibold text-[#D4943A] text-sm mb-1">
+                    Demo Mode Notice
+                  </p>
+                  <p className="text-[#C0B8A9] text-xs leading-relaxed">
+                    If you don&apos;t have the <span className="text-[#D4B896] font-semibold">Guardian Pulse Medical Kit</span>, 
+                    logging in with Google will show you a <span className="text-[#F0E6D3] font-semibold">demo preview</span> of 
+                    the original working site and app with simulated health data.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Role Selector */}
-          <div className="flex space-x-4 w-full mb-8">
+          <div className="flex space-x-4 w-full mb-6">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

@@ -504,25 +504,29 @@ export function detectTremorFromMotion(
 export function classifyAlertType(alertType: string = 'unknown') {
   switch ((alertType || 'unknown').toLowerCase()) {
     case "cardiac":
-      return { color: "var(--red)", icon: "Activity", label: "Cardiac Issue" };
+      return { color: "#E05252", icon: "Activity", label: "Cardiac Issue" };
     case "seizure":
       return { color: "#D4943A", icon: "Zap", label: "Seizure Detected" };
     case "panic":
       return {
-        color: "var(--amber)",
+        color: "#E8C438",
         icon: "AlertTriangle",
         label: "Panic Attack",
       };
     case "parkinson":
       return {
-        color: "var(--blue)",
+        color: "#5B9BD5",
         icon: "Activity",
         label: "Tremor Detected",
       };
     case "ptsd":
-      return { color: "var(--purple)", icon: "Brain", label: "PTSD Episode" };
+      return { color: "#9B7EC8", icon: "Brain", label: "PTSD Episode" };
+    case "support_request":
+      return { color: "#D4B896", icon: "LifeBuoy", label: "Support Request" };
+    case "emergency_sos":
+      return { color: "#E05252", icon: "Phone", label: "Emergency SOS" };
     default:
-      return { color: "var(--red)", icon: "AlertCircle", label: alertType };
+      return { color: "#E05252", icon: "AlertCircle", label: alertType || "Unknown Alert" };
   }
 }
 
@@ -608,4 +612,47 @@ export function useLiveVitals(userId: string) {
   }, [userId])
 
   return vitals
+}
+
+// ─── Read synced demo vitals for admin view ──────────
+export interface DemoVitals {
+  spO2: number
+  hrv: number
+  stress: number
+  bodyTemp: number
+  respRate: number
+  sleepScore?: number
+  bloodPressureSys: number
+  bloodPressureDia: number
+  steps?: number
+  calories?: number
+  heartRhythm?: number
+  tremorScore?: number
+  seizureRisk?: number
+  gaitStability?: number
+  panicScore?: number
+  updatedAt: number
+}
+
+export function usePatientDemoVitals(userId: string) {
+  const [vitals, setVitals] = useState<DemoVitals | null>(null)
+
+  useEffect(() => {
+    if (!userId) return
+    const vitalsRef = ref(db, `users/${userId}/lastVitals`)
+    const unsub = onValue(vitalsRef, (snap) => {
+      if (snap.exists()) {
+        setVitals(snap.val() as DemoVitals)
+      }
+    })
+    return () => unsub()
+  }, [userId])
+
+  return vitals
+}
+
+// ─── Count-based hooks for dashboard stats ───────────
+export function useSupportRequestCount() {
+  const { data: patients } = useAllPatients()
+  return patients.filter(p => p.needsSupport).length
 }

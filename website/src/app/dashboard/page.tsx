@@ -1,8 +1,8 @@
 'use client';
 
-import { useSystemStats, useActiveAlerts, useAllPatients, useLatestECGPerPatient, classifyAlertType, calculateBpmStatus, usePendingAdminCount } from '@/lib/firebase-hooks';
+import { useSystemStats, useActiveAlerts, useAllPatients, useLatestECGPerPatient, classifyAlertType, calculateBpmStatus, usePendingAdminCount, useSupportRequestCount } from '@/lib/firebase-hooks';
 import StatCard from '@/components/StatCard';
-import { Users, AlertTriangle, Heart, Zap, CheckCircle, Phone, ArrowRight, Download, ShieldCheck, BarChart3, ScrollText } from 'lucide-react';
+import { Users, AlertTriangle, Heart, Zap, CheckCircle, Phone, ArrowRight, Download, ShieldCheck, BarChart3, ScrollText, LifeBuoy, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format } from 'date-fns';
@@ -14,6 +14,7 @@ export default function DashboardOverview() {
   const { data: activeAlerts } = useActiveAlerts();
   const { data: patients } = useAllPatients();
   const pendingAdminCount = usePendingAdminCount();
+  const supportCount = useSupportRequestCount();
   
   const patientIds = patients.slice(0, 6).map(p => p.userId as string);
   const { data: latestEcgMap } = useLatestECGPerPatient(patientIds);
@@ -31,7 +32,7 @@ export default function DashboardOverview() {
 
   if (statsLoading) {
     return (
-      <div className="grid grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {[1, 2, 3, 4].map(i => <div key={i} className="h-32 shimmer rounded-2xl" />)}
       </div>
     );
@@ -119,8 +120,9 @@ export default function DashboardOverview() {
       </motion.div>
 
       {/* QUICK ACCESS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
+          { href: '/dashboard/support', label: 'Support Chat', desc: `${supportCount} open requests`, icon: MessageSquare, color: supportCount > 0 ? '#E05252' : '#D4B896' },
           { href: '/dashboard/analytics', label: 'Analytics Hub', desc: 'Charts, trends & metrics', icon: BarChart3, color: '#D4B896' },
           { href: '/dashboard/audit-log', label: 'Audit Log', desc: 'Activity & event history', icon: ScrollText, color: '#5B9BD5' },
           { href: '/dashboard/admin-requests', label: 'Admin Requests', desc: `${pendingAdminCount} pending`, icon: ShieldCheck, color: '#4CAF78' },

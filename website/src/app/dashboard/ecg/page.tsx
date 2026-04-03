@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Heart, Activity, Settings, Bell, FileText, Phone, Zap } from 'lucide-react';
-import { useAllPatients, useLatestECGPerPatient, Patient, calculateBpmStatus } from '@/lib/firebase-hooks';
+import { useAllPatients, useLatestECGPerPatient, Patient, calculateBpmStatus, usePatientDemoVitals } from '@/lib/firebase-hooks';
+import DiagnosticReportsList from '@/components/DiagnosticReportsList';
+import { Shield } from 'lucide-react';
 import PatientECGCard from '@/components/PatientECGCard';
 import * as Tabs from '@radix-ui/react-tabs';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -23,6 +25,7 @@ export default function ECGMonitorPage() {
 
   const selectedPatient = patients.find(p => p.userId === selectedPatientId);
   const selectedEcgData = selectedPatientId ? (ecgMap.get(selectedPatientId) || []) : [];
+  const vitals = usePatientDemoVitals(selectedPatientId || '');
 
   const handleSaveSettings = async (updates: Partial<Patient>) => {
     if (!selectedPatientId) return;
@@ -183,6 +186,25 @@ export default function ECGMonitorPage() {
                             </div>
                             <a href="tel:5551234567" className="bg-[#4A6741] text-[#F0E6D3] px-3 py-1.5 rounded-lg text-sm">Call</a>
                          </div>
+                      </div>
+
+                      {/* Diagnostic Reports linked with Dashboard */}
+                      <div className="bg-[#141E18] rounded-2xl p-5 border border-[rgba(212,184,150,0.1)]">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-[#D4B896]" />
+                            <h4 className="font-poppins font-semibold text-sm text-[#F0E6D3]">Diagnostic Reports</h4>
+                          </div>
+                          <span className="text-[9px] px-2 py-0.5 bg-[rgba(76,175,120,0.1)] text-[#4CAF78] border border-[#4CAF78]/30 rounded-full font-bold uppercase tracking-wider">Synced • Live</span>
+                        </div>
+                        {vitals ? (
+                          <DiagnosticReportsList vitals={vitals} />
+                        ) : (
+                          <div className="text-center py-8">
+                             <div className="w-6 h-6 border-2 border-[#4CAF78] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                             <p className="text-xs text-[#9BA897]">Syncing live vitals from device...</p>
+                          </div>
+                        )}
                       </div>
                     </Tabs.Content>
 

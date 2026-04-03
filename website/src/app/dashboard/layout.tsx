@@ -14,9 +14,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="ambient-mesh"></div>
       
       <Sidebar />
-      <div className="flex-1 flex flex-col ml-60 relative z-10">
+      <div className="flex-1 flex flex-col md:ml-60 relative z-10">
         <TopHeader />
-        <main className="flex-1 mt-16 p-6 overflow-x-hidden">
+        <main className="flex-1 mt-14 md:mt-16 p-4 md:p-6 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}

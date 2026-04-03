@@ -328,43 +328,294 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   AGGRESSIVE CLERK UI OVERRIDES
+   COMPREHENSIVE CLERK UI OVERRIDES — DARK THEME
+   Force ALL Clerk text/UI to use light colors on our dark bg
    ═══════════════════════════════════════════════════════════════ */
 
-.cl-socialButtonsBlockButtonText {
+/* ── Root Clerk containers ── */
+.cl-rootBox,
+.cl-card,
+.cl-signIn-root,
+.cl-signUp-root,
+.cl-userProfile-root,
+.cl-userButton-root,
+.cl-organizationProfile-root,
+.cl-organizationSwitcher-root {
+  --clerk-text-color: #F0E6D3 !important;
+  --clerk-text-secondary-color: #D4B896 !important;
+  color: #F0E6D3 !important;
+}
+
+/* ── Background overrides for ALL Clerk panels/modals/cards ── */
+.cl-card,
+.cl-modalContent,
+.cl-profilePage,
+.cl-modalBackdrop + * .cl-card,
+.cl-scrollBox,
+.cl-pageScrollBox,
+.cl-page,
+.cl-profileSection,
+.cl-profileSectionContent,
+.cl-profileSectionPrimaryButton,
+.cl-accordionContent,
+.cl-accordionTriggerButton,
+.cl-navbarButton,
+.cl-navbar,
+.cl-headerBackRow,
+.cl-main {
+  background-color: #1C2B1E !important;
+  background: #1C2B1E !important;
+  color: #F0E6D3 !important;
+}
+
+/* ── Force ALL text inside Clerk to be visible ── */
+.cl-rootBox *,
+.cl-modalContent *,
+.cl-userButtonPopoverCard *,
+.cl-userProfile-root * {
+  color: inherit;
+}
+
+/* ── Specific text elements ── */
+.cl-headerTitle,
+.cl-headerSubtitle,
+.cl-dividerText,
+.cl-dividerLine {
+  color: #D4B896 !important;
+}
+
+.cl-formFieldLabel,
+.cl-formFieldLabelRow,
+.cl-formFieldAction,
+.cl-formFieldHintText,
+.cl-formFieldInfoText,
+.cl-formFieldSuccessText {
+  color: #D4B896 !important;
+}
+
+.cl-footerActionText,
+.cl-footerActionLink,
+.cl-footerPagesLink {
+  color: #D4B896 !important;
+}
+
+.cl-footerActionLink:hover,
+.cl-footerPagesLink:hover {
+  color: #C4A882 !important;
+}
+
+.cl-socialButtonsBlockButtonText,
+.cl-socialButtonsBlockButton {
   color: #D4B896 !important;
 }
 
 .cl-formFieldInput {
   color: #F0E6D3 !important;
+  background-color: #111811 !important;
+  border-color: rgba(74,103,65,0.3) !important;
 }
 
 .cl-formFieldInput::placeholder {
-  color: #D4B896 !important;
-  opacity: 0.8 !important;
+  color: #7A8A76 !important;
+  opacity: 1 !important;
 }
 
+.cl-formFieldInput:focus {
+  border-color: #D4B896 !important;
+  box-shadow: 0 0 0 3px rgba(212,184,150,0.1) !important;
+}
+
+/* ── Profile & Account pages (the modals shown in screenshots) ── */
+.cl-profilePage,
+.cl-profileSectionTitle,
+.cl-profileSectionTitleText,
+.cl-profileSectionSubtitle,
+.cl-profileSectionContent,
+.cl-profileSectionItem,
+.cl-breadcrumbs,
+.cl-breadcrumbsItem,
+.cl-breadcrumbsItemDivider,
+.cl-navbarButton,
+.cl-activeDevice,
+.cl-activeDeviceIcon,
+.cl-formattedPhoneNumber,
+.cl-profileSection__emailAddresses,
+.cl-profileSection__connectedAccounts,
+.cl-profileSection__password,
+.cl-profileSection__activeDevices,
+.cl-profileSection__danger,
+.cl-userPreview,
+.cl-userPreviewMainIdentifier,
+.cl-userPreviewSecondaryIdentifier,
+.cl-userPreviewTextContainer {
+  color: #F0E6D3 !important;
+  background-color: transparent !important;
+}
+
+.cl-profileSectionTitleText {
+  color: #D4B896 !important;
+  font-weight: 600 !important;
+}
+
+/* ── UserButton Popover (dropdown menu) ── */
+.cl-userButtonPopoverCard,
+.cl-userButtonPopoverMain,
+.cl-userButtonPopoverActions,
+.cl-userButtonPopoverActionButton,
+.cl-userButtonPopoverActionButtonText,
+.cl-userButtonPopoverFooter {
+  background-color: #1C2B1E !important;
+  background: #1C2B1E !important;
+  color: #F0E6D3 !important;
+  border-color: rgba(212,184,150,0.1) !important;
+}
+
+.cl-userButtonPopoverActionButton:hover {
+  background-color: #243028 !important;
+}
+
+.cl-userButtonPopoverActionButtonText,
+.cl-userButtonPopoverActionButtonIcon {
+  color: #D4B896 !important;
+}
+
+.cl-userPreview {
+  color: #F0E6D3 !important;
+}
+
+.cl-userPreviewMainIdentifier {
+  color: #F0E6D3 !important;
+}
+
+.cl-userPreviewSecondaryIdentifier {
+  color: #9BA897 !important;
+}
+
+/* ── Internal page text (email, connected accounts, etc.) ── */
+.cl-internal-text,
+.cl-internal-16j1tvo,
+.cl-internal-1fpe8s3,
+.cl-internal-1dauvfu,
+.cl-internal-71n5zv,
+div[class*="cl-internal"] {
+  color: #F0E6D3 !important;
+}
+
+/* ── Buttons inside Clerk ── */
+.cl-formButtonPrimary {
+  background: linear-gradient(135deg, #D4B896, #C4A882) !important;
+  color: #141A14 !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background: linear-gradient(135deg, #C4A882, #B49872) !important;
+  box-shadow: 0 4px 20px rgba(212,184,150,0.3) !important;
+}
+
+.cl-formButtonReset,
+.cl-otherMethodsButton,
+.cl-alternativeMethodsBlockButton {
+  color: #D4B896 !important;
+}
+
+.cl-identityPreview,
+.cl-identityPreviewText,
+.cl-identityPreviewEditButton {
+  color: #D4B896 !important;
+}
+
+/* ── Clerk modal overlay & card backgrounds ── */
+.cl-modalBackdrop {
+  background-color: rgba(10, 16, 10, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.cl-modal-content,
+.cl-modalContent {
+  background-color: #1C2B1E !important;
+  border: 1px solid rgba(212,184,150,0.1) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+}
+
+/* ── Clerk badges ── */
+[class*="badge"],
+[class*="Badge"],
+.cl-badge,
+.cl-tagPrimaryText,
+.cl-tagInputContainer {
+  color: #D4B896 !important;
+}
+
+/* ── Apple social icon ── */
 .cl-socialButtonsProviderIcon__apple {
   filter: invert(1) !important;
 }
 
-.cl-headerTitle, .cl-headerSubtitle, .cl-dividerText {
-  color: #D4B896 !important;
+/* ── Section separators/borders ── */
+.cl-profileSection + .cl-profileSection {
+  border-top-color: rgba(212,184,150,0.08) !important;
 }
 
-.cl-formFieldLabel, .cl-formFieldLabelRow, .cl-formFieldAction, .cl-footerActionText, .cl-footerActionLink {
-  color: #D4B896 !important;
+.cl-dividerRow .cl-dividerLine {
+  background-color: rgba(212,184,150,0.15) !important;
 }
 
-[class*="badge"],
-[class*="Badge"],
-.cl-badge {
-  color: #D4B896 !important;
+/* ── Scrollbox styling ── */
+.cl-scrollBox::-webkit-scrollbar { width: 4px; }
+.cl-scrollBox::-webkit-scrollbar-track { background: transparent; }
+.cl-scrollBox::-webkit-scrollbar-thumb { background: #4A6741; border-radius: 2px; }
+
+/* ── Navbar/sidebar in modals ── */
+.cl-navbar {
+  background-color: #141A14 !important;
+  border-right-color: rgba(212,184,150,0.08) !important;
 }
 
-.cl-footerActionLink:hover {
-  color: #C4A882 !important;
+.cl-navbarButton {
+  color: #9BA897 !important;
 }
+
+.cl-navbarButton[data-active="true"],
+.cl-navbarButton:hover {
+  color: #D4B896 !important;
+  background-color: rgba(212,184,150,0.08) !important;
+}
+
+/* ── "Secured by Clerk" footer ── */
+.cl-footerItem,
+.cl-internal-b4j3cg {
+  opacity: 0.4 !important;
+}
+
+/* ── Override any remaining p/span/label black text ── */
+.cl-rootBox p,
+.cl-rootBox span,
+.cl-rootBox label,
+.cl-rootBox div,
+.cl-rootBox h1,
+.cl-rootBox h2,
+.cl-rootBox h3,
+.cl-rootBox a,
+.cl-modalContent p,
+.cl-modalContent span,
+.cl-modalContent label,
+.cl-modalContent div,
+.cl-modalContent h1,
+.cl-modalContent h2,
+.cl-modalContent h3,
+.cl-modalContent a {
+  color: inherit !important;
+}
+
+/* Reset inherit on specific elements that need different colors */
+.cl-headerTitle { color: #D4B896 !important; }
+.cl-headerSubtitle { color: #9BA897 !important; }
+.cl-formFieldLabel { color: #D4B896 !important; }
+.cl-footerActionLink { color: #D4B896 !important; }
+.cl-socialButtonsBlockButtonText { color: #D4B896 !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    AMBIENT BACKGROUND
