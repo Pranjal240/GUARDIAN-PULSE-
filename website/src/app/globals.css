@@ -562,10 +562,6 @@ div[class*="cl-internal"] {
   color: #D4B896 !important;
 }
 
-.cl-rootBox button:not([class*="primary"]):not([class*="socialButton"]),
-.cl-modalContent button:not([class*="primary"]):not([class*="socialButton"]) {
-  color: #D4B896 !important;
-}
 
 .cl-rootBox button[disabled],
 .cl-modalContent button[disabled] {
