@@ -104,13 +104,48 @@ export function useAllPatients() {
         const patients: Patient[] = [];
         snapshot.forEach((child) => {
           const val = child.val();
+          const computedName = val.name 
+            || `${val.firstName || ''} ${val.lastName || ''}`.trim() 
+            || 'Unknown';
           patients.push({ 
+            ...val,
             userId: child.key || val.userId || '', 
-            name: val.name || `${val.firstName || ''} ${val.lastName || ''}`.trim() || 'Unknown',
-            ...val 
+            name: computedName,
+            email: (val.email || '').toLowerCase().trim(),
           });
         });
-        setData(patients.filter(p => p.userId !== undefined));
+
+        // ── Deduplicate by email ──────────────────────────────────────
+        // If multiple Firebase nodes share the same email (e.g., leftover
+        // test entries), keep only the most "complete" one: the one with
+        // the most non-null fields, breaking ties by createdAt (newest).
+        const emailMap = new Map<string, Patient>();
+        for (const p of patients) {
+          if (!p.userId) continue;
+          const email = (p.email || '').toLowerCase().trim();
+          
+          if (!email) {
+            // No email — keep under a synthetic key to avoid collision
+            emailMap.set(`no-email-${p.userId}`, p);
+            continue;
+          }
+
+          const existing = emailMap.get(email);
+          if (!existing) {
+            emailMap.set(email, p);
+          } else {
+            // Score = number of truthy fields (more data = better record)
+            const score = (x: Patient) => Object.values(x).filter(Boolean).length;
+            const existingCreated = (existing as Record<string, unknown>).createdAt as number || 0;
+            const newCreated = (p as Record<string, unknown>).createdAt as number || 0;
+
+            if (score(p) > score(existing) || (score(p) === score(existing) && newCreated > existingCreated)) {
+              emailMap.set(email, p);
+            }
+          }
+        }
+
+        setData(Array.from(emailMap.values()));
         setLoading(false);
       },
       (err) => {
@@ -123,6 +158,7 @@ export function useAllPatients() {
 
   return { data, loading, error };
 }
+
 
 export function usePatientECG(userId: string, limitCount = 60) {
   const [data, setData] = useState<EcgReading[]>([]);
