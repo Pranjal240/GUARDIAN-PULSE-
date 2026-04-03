@@ -666,6 +666,12 @@ div[class*="cl-internal"] {
   color: #F0E6D3 !important;
 }
 
+/* Fix inheritance for spans/text inside buttons */
+.cl-rootBox button *,
+.cl-modalContent button * {
+  color: inherit !important;
+}
+
 /* Reset inherit on specific elements that need different colors */
 .cl-headerTitle { color: #D4B896 !important; }
 .cl-headerSubtitle { color: #9BA897 !important; }
