@@ -409,20 +409,38 @@ body {
   color: #D4B896 !important;
 }
 
-.cl-formFieldInput {
+.cl-formFieldInput,
+.cl-rootBox input,
+.cl-modalContent input {
   color: #F0E6D3 !important;
   background-color: #111811 !important;
-  border-color: rgba(74,103,65,0.3) !important;
+  border: 1px solid rgba(74,103,65,0.3) !important;
+  font-family: var(--font-mono-data), monospace !important;
 }
 
-.cl-formFieldInput::placeholder {
-  color: #7A8A76 !important;
+.cl-formFieldInput::placeholder,
+.cl-rootBox input::placeholder,
+.cl-modalContent input::placeholder {
+  color: #9BA897 !important;
   opacity: 1 !important;
 }
 
-.cl-formFieldInput:focus {
+.cl-formFieldInput:focus,
+.cl-rootBox input:focus,
+.cl-modalContent input:focus {
   border-color: #D4B896 !important;
   box-shadow: 0 0 0 3px rgba(212,184,150,0.1) !important;
+}
+
+/* Ensure any code blocks (like API keys) use monospace and visible colors */
+.cl-rootBox code,
+.cl-modalContent code {
+  color: #D4B896 !important;
+  background-color: #111811 !important;
+  border: 1px solid rgba(74,103,65,0.3) !important;
+  font-family: var(--font-mono-data), monospace !important;
+  padding: 0.2rem 0.4rem !important;
+  border-radius: 4px !important;
 }
 
 /* ── Profile & Account pages (the modals shown in screenshots) ── */
@@ -502,14 +520,18 @@ div[class*="cl-internal"] {
 }
 
 /* ── Buttons inside Clerk ── */
-.cl-formButtonPrimary {
+.cl-formButtonPrimary,
+.cl-rootBox button[class*="primary"],
+.cl-modalContent button[class*="primary"] {
   background: linear-gradient(135deg, #D4B896, #C4A882) !important;
   color: #141A14 !important;
   font-weight: 600 !important;
   border: none !important;
 }
 
-.cl-formButtonPrimary:hover {
+.cl-formButtonPrimary:hover,
+.cl-rootBox button[class*="primary"]:hover,
+.cl-modalContent button[class*="primary"]:hover {
   background: linear-gradient(135deg, #C4A882, #B49872) !important;
   box-shadow: 0 4px 20px rgba(212,184,150,0.3) !important;
 }
@@ -518,6 +540,20 @@ div[class*="cl-internal"] {
 .cl-otherMethodsButton,
 .cl-alternativeMethodsBlockButton {
   color: #D4B896 !important;
+}
+
+.cl-rootBox button:not([class*="primary"]):not([class*="socialButton"]),
+.cl-modalContent button:not([class*="primary"]):not([class*="socialButton"]) {
+  color: #D4B896 !important;
+}
+
+.cl-rootBox button[disabled],
+.cl-modalContent button[disabled] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: #243028 !important;
+  color: #9BA897 !important;
+  box-shadow: none !important;
 }
 
 .cl-identityPreview,
@@ -607,7 +643,7 @@ div[class*="cl-internal"] {
 .cl-modalContent h2,
 .cl-modalContent h3,
 .cl-modalContent a {
-  color: inherit !important;
+  color: #F0E6D3 !important;
 }
 
 /* Reset inherit on specific elements that need different colors */
@@ -616,6 +652,8 @@ div[class*="cl-internal"] {
 .cl-formFieldLabel { color: #D4B896 !important; }
 .cl-footerActionLink { color: #D4B896 !important; }
 .cl-socialButtonsBlockButtonText { color: #D4B896 !important; }
+.cl-profileSectionTitleText { color: #D4B896 !important; }
+.cl-userPreviewSecondaryIdentifier { color: #9BA897 !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    AMBIENT BACKGROUND
