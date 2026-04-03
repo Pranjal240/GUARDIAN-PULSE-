@@ -80,6 +80,11 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-surface); }
 ::-webkit-scrollbar-thumb { background: var(--olive-mid); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--olive-bright); }
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
 
 @keyframes livePulse {
   0%,100% { opacity:1; transform:scale(1); }
@@ -88,8 +93,8 @@ body {
 .live-dot { animation: livePulse 1.5s ease-in-out infinite; }
 
 @keyframes criticalCardPulse {
-  0%,100% { box-shadow: 0 4px 24px rgba(0,0,0,0.5); border-color: transparent; }
-  50% { box-shadow: 0 0 32px rgba(224,82,82,0.4), 0 4px 24px rgba(0,0,0,0.5); border-color: rgba(224,82,82,0.5); }
+  0%,100% { box-shadow: 0 4px 24px rgba(0,0,0,0.5); border-color: rgba(224,82,82,0.2); }
+  50% { box-shadow: 0 0 40px rgba(224,82,82,0.35), 0 4px 24px rgba(0,0,0,0.5); border-color: rgba(224,82,82,0.6); }
 }
 
 @keyframes shimmer {
@@ -117,12 +122,141 @@ body {
   to { transform:translateX(0); opacity:1; }
 }
 
-/* Base Components */
+/* NEW — Fade slide up (staggered page entry) */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) both;
+}
+.animate-fade-slide-up-d1 { animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) 0.1s both; }
+.animate-fade-slide-up-d2 { animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) 0.2s both; }
+.animate-fade-slide-up-d3 { animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) 0.3s both; }
+.animate-fade-slide-up-d4 { animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) 0.4s both; }
+.animate-fade-slide-up-d5 { animation: fadeSlideUp 0.6s cubic-bezier(0.25,0.1,0.25,1) 0.5s both; }
+
+/* NEW — Glow pulse for active elements */
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 8px rgba(212,184,150,0.1); }
+  50% { box-shadow: 0 0 24px rgba(212,184,150,0.25), 0 0 48px rgba(212,184,150,0.08); }
+}
+.animate-glow-pulse { animation: glowPulse 3s ease-in-out infinite; }
+
+/* NEW — Card float on hover */
+@keyframes cardFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.hover-float { transition: all 0.4s cubic-bezier(0.25,0.1,0.25,1); }
+.hover-float:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 20px rgba(212,184,150,0.08);
+}
+
+/* NEW — Gradient shift background */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease-in-out infinite;
+}
+
+/* NEW — Border glow */
+@keyframes borderGlow {
+  0%,100% { border-color: rgba(212,184,150,0.1); }
+  50% { border-color: rgba(212,184,150,0.35); }
+}
+.animate-border-glow { animation: borderGlow 3s ease-in-out infinite; }
+
+/* NEW — Ripple click effect */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* NEW — Scale in */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in { animation: scaleIn 0.4s cubic-bezier(0.25,0.1,0.25,1) both; }
+
+/* NEW — Spin slow */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spinSlow 12s linear infinite; }
+
+/* NEW — Heartbeat */
+@keyframes heartbeat {
+  0%,100% { transform: scale(1); }
+  14% { transform: scale(1.15); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.1); }
+  56% { transform: scale(1); }
+}
+.animate-heartbeat { animation: heartbeat 1.5s ease-in-out infinite; }
+
+/* NEW — Notification bell shake */
+@keyframes bellShake {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  85% { transform: rotate(-2deg); }
+  100% { transform: rotate(0); }
+}
+.animate-bell-shake { animation: bellShake 0.6s ease-in-out; }
+
+/* NEW — Slide in from right */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.25,0.1,0.25,1) both; }
+
+/* NEW — Ambient background mesh */
+@keyframes meshFloat {
+  0%,100% { transform: translate(0,0) scale(1); opacity: 0.3; }
+  33% { transform: translate(30px,-20px) scale(1.1); opacity: 0.5; }
+  66% { transform: translate(-20px,30px) scale(0.95); opacity: 0.35; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BASE COMPONENTS
+   ═══════════════════════════════════════════════════════════════ */
+
 .card-style {
   background: var(--bg-surface);
   border: 1px solid var(--beige-border);
   border-radius: 16px;
   box-shadow: var(--card-shadow);
+  transition: all 0.3s cubic-bezier(0.25,0.1,0.25,1);
+}
+.card-style:hover {
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* Glass morphism card variant */
+.card-glass {
+  background: rgba(28,43,30,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212,184,150,0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transition: all 0.3s cubic-bezier(0.25,0.1,0.25,1);
+}
+.card-glass:hover {
+  border-color: rgba(212,184,150,0.25);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
 }
 
 .btn-primary {
@@ -134,9 +268,69 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(212,184,150,0.3);
+}
+.btn-primary:active {
+  transform: translateY(0);
 }
 
-/* Aggressive Clerk UI Overrides */
+/* Status badges */
+.badge-critical {
+  background: rgba(224,82,82,0.15);
+  color: #E05252;
+  border: 1px solid rgba(224,82,82,0.3);
+}
+.badge-warning {
+  background: rgba(212,148,58,0.15);
+  color: #D4943A;
+  border: 1px solid rgba(212,148,58,0.3);
+}
+.badge-normal {
+  background: rgba(76,175,120,0.15);
+  color: #4CAF78;
+  border: 1px solid rgba(76,175,120,0.3);
+}
+.badge-pending {
+  background: rgba(91,155,213,0.15);
+  color: #5B9BD5;
+  border: 1px solid rgba(91,155,213,0.3);
+}
+
+/* Input style */
+.input-olive {
+  background: var(--bg-input);
+  border: 1px solid var(--olive-border);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.input-olive:focus {
+  border-color: var(--beige-primary);
+  box-shadow: 0 0 0 3px rgba(212,184,150,0.1);
+}
+
+/* Card (used in patients page) */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--beige-border);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s cubic-bezier(0.25,0.1,0.25,1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AGGRESSIVE CLERK UI OVERRIDES
+   ═══════════════════════════════════════════════════════════════ */
+
 .cl-socialButtonsBlockButtonText {
   color: #D4B896 !important;
 }
@@ -172,3 +366,36 @@ body {
   color: #C4A882 !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   AMBIENT BACKGROUND
+   ═══════════════════════════════════════════════════════════════ */
+
+.ambient-mesh {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.ambient-mesh::before,
+.ambient-mesh::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  filter: blur(120px);
+  animation: meshFloat 20s ease-in-out infinite;
+}
+.ambient-mesh::before {
+  background: rgba(212,184,150,0.04);
+  top: -100px;
+  right: -100px;
+  animation-delay: -5s;
+}
+.ambient-mesh::after {
+  background: rgba(74,103,65,0.04);
+  bottom: -100px;
+  left: -100px;
+  animation-delay: -10s;
+}

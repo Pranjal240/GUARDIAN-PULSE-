@@ -1,26 +1,26 @@
 'use client';
 
-import { useSystemStats, useActiveAlerts, useAllPatients, useLatestECGPerPatient, classifyAlertType, calculateBpmStatus } from '@/lib/firebase-hooks';
+import { useSystemStats, useActiveAlerts, useAllPatients, useLatestECGPerPatient, classifyAlertType, calculateBpmStatus, usePendingAdminCount } from '@/lib/firebase-hooks';
 import StatCard from '@/components/StatCard';
-import { Users, AlertTriangle, Heart, Zap, CheckCircle, Phone, ArrowRight, Download } from 'lucide-react';
+import { Users, AlertTriangle, Heart, Zap, CheckCircle, Phone, ArrowRight, Download, ShieldCheck, BarChart3, ScrollText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format } from 'date-fns';
 import { useAuth } from '@clerk/nextjs';
+import Link from 'next/link';
 
 export default function DashboardOverview() {
   const { data: stats, loading: statsLoading } = useSystemStats();
   const { data: activeAlerts } = useActiveAlerts();
   const { data: patients } = useAllPatients();
+  const pendingAdminCount = usePendingAdminCount();
   
-  // Get top 6 patients by latest activity (or just random 6 for UI)
   const patientIds = patients.slice(0, 6).map(p => p.userId as string);
   const { data: latestEcgMap } = useLatestECGPerPatient(patientIds);
   const { getToken } = useAuth();
 
   const handleResolveAlert = async (alertId: string) => {
     try {
-      // Direct Firebase write to resolve (since we are admin)
       const { ref, set } = await import('firebase/database');
       const { db } = await import('@/lib/firebase');
       await set(ref(db, `alerts/${alertId}/status`), 'resolved');
@@ -37,13 +37,11 @@ export default function DashboardOverview() {
     );
   }
 
-  // Mock bar chart data for 'Alerts - Last 30 Days'
   const barData = Array.from({ length: 7 }).map((_, i) => ({
     name: format(new Date(Date.now() - (6 - i) * 86400000), 'MMM dd'),
     count: Math.floor(Math.random() * 8) + 1
   }));
 
-  // Pie chart data
   const pieData = [
     { name: 'Cardiac', value: 45, color: '#E05252' },
     { name: 'Seizure', value: 25, color: '#D4943A' },
@@ -54,6 +52,34 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+
+      {/* PENDING ADMIN REQUESTS BANNER */}
+      <AnimatePresence>
+        {pendingAdminCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Link href="/dashboard/admin-requests" className="block">
+              <div className="card-glass p-4 flex items-center justify-between border-l-4 border-l-[#5B9BD5] hover:border-[rgba(91,155,213,0.3)] transition-colors group">
+                <div className="flex items-center space-x-4">
+                  <div className="p-2.5 bg-[rgba(91,155,213,0.12)] rounded-xl">
+                    <ShieldCheck className="w-5 h-5 text-[#5B9BD5]" />
+                  </div>
+                  <div>
+                    <h4 className="font-poppins font-semibold text-[#F0E6D3]">
+                      {pendingAdminCount} Pending Admin Request{pendingAdminCount > 1 ? 's' : ''}
+                    </h4>
+                    <p className="text-[#7A8A76] text-sm">Review and approve new admin access requests</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-[#5B9BD5] group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* STAT CARDS ROW */}
       <motion.div 
@@ -92,6 +118,35 @@ export default function DashboardOverview() {
         />
       </motion.div>
 
+      {/* QUICK ACCESS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { href: '/dashboard/analytics', label: 'Analytics Hub', desc: 'Charts, trends & metrics', icon: BarChart3, color: '#D4B896' },
+          { href: '/dashboard/audit-log', label: 'Audit Log', desc: 'Activity & event history', icon: ScrollText, color: '#5B9BD5' },
+          { href: '/dashboard/admin-requests', label: 'Admin Requests', desc: `${pendingAdminCount} pending`, icon: ShieldCheck, color: '#4CAF78' },
+        ].map((card, i) => (
+          <motion.div
+            key={card.href}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 + i * 0.1 }}
+          >
+            <Link href={card.href}>
+              <div className="card-glass p-4 flex items-center space-x-4 hover-float group">
+                <div className="p-2.5 rounded-xl transition-transform group-hover:scale-110" style={{ background: `${card.color}15` }}>
+                  <card.icon className="w-5 h-5" style={{ color: card.color }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-poppins font-semibold text-[#F0E6D3] text-sm">{card.label}</h4>
+                  <p className="text-[#7A8A76] text-xs">{card.desc}</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#5C6B58] group-hover:text-[#D4B896] group-hover:translate-x-1 transition-all" />
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* LIVE ALERT FEED */}
@@ -102,7 +157,7 @@ export default function DashboardOverview() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E05252] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-[#E05252]"></span>
             </span>}
-            <span className="bg-[#1C2B1E] border border-[rgba(212,184,150,0.2)] text-[#D4B896] text-xs px-2.5 py-1 rounded-full font-mono-data">
+            <span className="bg-[#1C2B1E] border border-[rgba(212,184,150,0.2)] text-[#D4B896] text-xs px-2.5 py-1 rounded-full font-mono">
               {activeAlerts.length}
             </span>
           </div>
@@ -132,7 +187,7 @@ export default function DashboardOverview() {
                     initial={{ opacity: 0, x: -50 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, height: 0, marginBottom: 0, scale: 0.95 }}
-                    className="card-style flex flex-col sm:flex-row items-center justify-between p-4 border-l-4 pr-5 transition-shadow hover:shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
+                    className="card-style flex flex-col sm:flex-row items-center justify-between p-4 border-l-4 pr-5 transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.6)] hover-float"
                     style={{ borderLeftColor: typeInfo.color }}
                   >
                     <div className="flex items-center space-x-4 flex-1 mb-4 sm:mb-0">
@@ -142,7 +197,6 @@ export default function DashboardOverview() {
                       </div>
                       <div>
                         <h4 className="font-poppins font-medium text-[#F0E6D3]">{(pInfo?.name ?? 'Unknown')}</h4>
-                        <span className="text-xs text-[#7A8A76]">{(pInfo?.role ?? 'patient')}</span>
                         <span className="text-xs text-[#9BA897]">{timeAgo === 0 ? 'Just now' : `${timeAgo} min ago`}</span>
                       </div>
                     </div>
@@ -156,7 +210,7 @@ export default function DashboardOverview() {
                     <div className="flex items-center space-x-2 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
                       <button 
                         onClick={() => handleResolveAlert(alert.id)}
-                        className="bg-[#4A6741] hover:bg-[#5B7F52] text-[#F2E8D9] font-medium text-sm px-4 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                        className="bg-[#4A6741] hover:bg-[#5B7F52] text-[#F2E8D9] font-medium text-sm px-4 py-2 rounded-lg transition-all flex items-center space-x-1 hover:shadow-[0_0_15px_rgba(74,103,65,0.3)]"
                       >
                         <CheckCircle className="h-4 w-4" /> <span>Mark Safe</span>
                       </button>
@@ -193,8 +247,8 @@ export default function DashboardOverview() {
               return (
                 <motion.div 
                   key={id} 
-                  whileHover={{ scale: 1.02 }}
-                  className="card-style p-3 flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="card-glass p-3 flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden group"
                 >
                   <div className="flex justify-between items-start z-10">
                     <div className="flex items-center space-x-2">
@@ -205,13 +259,13 @@ export default function DashboardOverview() {
                         {(p?.name ?? 'Unknown')}
                       </span>
                     </div>
-                    <span className="font-mono-data text-lg font-bold" style={{ color: sColor }}>
+                    <span className="font-mono text-lg font-bold" style={{ color: sColor }}>
                       {currentBpm}
                     </span>
                   </div>
                   
                   {/* Miniature Chart Background */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 opacity-40">
+                  <div className="absolute inset-x-0 bottom-0 h-16 opacity-40 group-hover:opacity-60 transition-opacity">
                     <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
                     <ResponsiveContainer width="100%" height={80} minWidth={100}>
                       <AreaChart data={data.slice(-20)}>
@@ -239,7 +293,12 @@ export default function DashboardOverview() {
       {/* BOTTOM ANALYTICS GRAPHS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         
-        <div className="card-style p-5">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="card-style p-5"
+        >
            <div className="flex justify-between items-center mb-6">
              <h3 className="font-poppins font-medium text-[#F0E6D3]">Alerts — Last 7 Days</h3>
            </div>
@@ -253,7 +312,7 @@ export default function DashboardOverview() {
                    contentStyle={{ backgroundColor: '#1C2B1E', border: '1px solid rgba(212,184,150,0.2)', borderRadius: '12px', color: '#F0E6D3' }}
                    itemStyle={{ color: '#D4B896', fontFamily: 'JetBrains Mono' }}
                  />
-                 <Bar dataKey="count" fill="#D4B896" radius={[4, 4, 0, 0]} barSize={32}>
+                 <Bar dataKey="count" fill="#D4B896" radius={[6, 6, 0, 0]} barSize={32}>
                    {barData.map((entry, index) => (
                      <Cell key={`cell-${index}`} className="hover:opacity-80 transition-opacity cursor-pointer" />
                    ))}
@@ -262,12 +321,17 @@ export default function DashboardOverview() {
              </ResponsiveContainer>
              </div>
            </div>
-        </div>
+        </motion.div>
 
-        <div className="card-style p-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="card-style p-5"
+        >
            <div className="flex justify-between items-center mb-6">
              <h3 className="font-poppins font-medium text-[#F0E6D3]">Alert Breakdown</h3>
-             <button className="text-[#9BA897] hover:text-[#D4B896] p-1">
+             <button className="text-[#9BA897] hover:text-[#D4B896] p-1 transition-colors">
                <Download className="w-4 h-4" />
              </button>
            </div>
@@ -306,14 +370,14 @@ export default function DashboardOverview() {
              </div>
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none pr-32">
                 <div className="text-center">
-                  <span className="block font-mono-data text-2xl font-bold text-[#F0E6D3]">
+                  <span className="block font-mono text-2xl font-bold text-[#F0E6D3]">
                     {pieData.reduce((a, b) => a + b.value, 0)}
                   </span>
                   <span className="text-[10px] text-[#7A8A76] uppercase tracking-wider">Total</span>
                 </div>
              </div>
            </div>
-        </div>
+        </motion.div>
 
       </div>
 

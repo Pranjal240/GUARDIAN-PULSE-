@@ -113,9 +113,12 @@ Our modern, resilient, and highly available technology stack includes:
 - **Object Storage:** Cloudflare R2
 - **Auth:** Clerk Authentication
 
-### Frontend Platforms
+### Frontend Platforms & Security
 - **Mobile:** Flutter / Dart (Cross-platform Android & iOS)
-- **Web:** Next.js, React, Tailwind CSS (Hosted over Vercel)
+- **Web Admin Portal:** Next.js (App Router), React, Tailwind CSS, Framer Motion, Recharts
+- **Security & Authorization:** A rigorous role-assignment architecture. New users requesting admin privileges are placed in a `pending_admin` queue and must be explicitly approved/verified by an existing Administrator via a secure approval dashboard before accessing sensitive patient analytics.
+- **Analytics Engine:** Recharts-powered interactive analytics dashboard featuring BPM distribution histograms, system health uptime, active alert trends, and live responsive monitoring.
+- **Audit Logging:** Centralized, timestamped tracking of all administrative actions (approvals, rejections, anomaly clearances) preventing unauthorized or untraceable data manipulation.
 
 ### Alerting & AI
 - **LLM / AI:** Gemini 1.5 Flash (RAG Infrastructure)

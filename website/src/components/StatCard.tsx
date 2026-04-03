@@ -1,88 +1,89 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface StatCardProps {
   label: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   subtext: string;
-  iconColorClass?: string;
   isAlert?: boolean;
-  valuePrefix?: string;
-  valueSuffix?: string;
+  iconColorClass?: string;
 }
 
-export default function StatCard({
-  label,
-  value,
-  icon: Icon,
-  subtext,
-  iconColorClass = 'text-[#D4B896]',
-  isAlert = false,
-  valuePrefix = '',
-  valueSuffix = ''
-}: StatCardProps) {
-  const [displayValue, setDisplayValue] = useState(0);
-
-  // requestAnimationFrame based count-up
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  
   useEffect(() => {
-    let startTime: number;
-    const duration = 1500; // 1.5s
-    
-    // Only animate from 0 to target primarily on mount
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      // easeOutExpo
-      const easing = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      setDisplayValue(Math.floor(easing * value));
-      if (progress < 1) {
-        requestAnimationFrame(step);
+    let start = 0;
+    const end = value;
+    if (end === 0) { setDisplay(0); return; }
+    const duration = 1200;
+    const increment = end / (duration / 16);
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setDisplay(end);
+        clearInterval(timer);
+      } else {
+        setDisplay(Math.floor(start));
       }
-    };
-    
-    requestAnimationFrame(step);
+    }, 16);
+    return () => clearInterval(timer);
   }, [value]);
+
+  return <>{display}</>;
+}
+
+export default function StatCard({ label, value, icon: Icon, subtext, isAlert, iconColorClass }: StatCardProps) {
+  const numericValue = typeof value === 'number' ? value : 0;
 
   return (
     <motion.div
       variants={{
         hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
+        show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
       }}
-      className={`card-style relative p-5 border-t-[3px] overflow-hidden ${
-        isAlert
-          ? 'border-t-[#E05252] animate-critical'
-          : 'border-t-[#D4B896]'
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className={`card-glass p-5 relative overflow-hidden group cursor-default ${
+        isAlert ? 'animate-border-glow' : ''
       }`}
     >
-      <div className="flex justify-between items-start z-10 relative">
-        <div className="flex flex-col">
-          <span className="text-[#9BA897] text-xs font-semibold uppercase tracking-wider mb-2">
-            {label}
-          </span>
-          <div className="flex items-baseline space-x-1">
-            <span className="font-mono-data text-4xl text-[#F0E6D3] font-semibold tracking-tight">
-              {valuePrefix}{displayValue}{valueSuffix}
-            </span>
-          </div>
-          <span className="text-[#7A8A76] text-xs mt-2">
-            {subtext}
-          </span>
+      {/* Ambient background glow */}
+      {isAlert && (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(224,82,82,0.08),transparent_70%)]" />
+      )}
+
+      <div className="flex items-center justify-between mb-3 relative z-10">
+        <div className={`p-2.5 rounded-xl transition-all duration-300 group-hover:scale-110 ${
+          isAlert 
+            ? 'bg-[rgba(224,82,82,0.12)]' 
+            : 'bg-[rgba(212,184,150,0.08)]'
+        }`}>
+          <Icon className={`h-5 w-5 ${iconColorClass || 'text-[#D4B896]'}`} />
         </div>
         
-        <div className={`p-3 rounded-2xl bg-[rgba(212,184,150,0.05)] border border-[rgba(212,184,150,0.1)] ${iconColorClass}`}>
-          <Icon className="w-8 h-8 opacity-80" />
-        </div>
+        {!isAlert && (
+          <div className="flex items-center gap-1 text-[#4CAF78] opacity-0 group-hover:opacity-100 transition-opacity">
+            <TrendingUp className="w-3.5 h-3.5" />
+          </div>
+        )}
       </div>
-      
-      {/* Background super subtle glow based on alert state */}
-      {isAlert && (
-        <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-[#E05252] opacity-10 rounded-full blur-3xl pointer-events-none"></div>
-      )}
+
+      <div className="relative z-10">
+        <span className="font-mono text-3xl font-bold text-[#F0E6D3] block">
+          {typeof value === 'number' ? <AnimatedNumber value={numericValue} /> : value}
+        </span>
+        <h3 className="font-poppins font-medium text-[#D4B896] text-sm mt-1">{label}</h3>
+        <p className="text-[#5C6B58] text-xs mt-2">{subtext}</p>
+      </div>
+
+      {/* Decorative corner accent */}
+      <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full opacity-[0.03] group-hover:opacity-[0.06] transition-opacity ${
+        isAlert ? 'bg-[#E05252]' : 'bg-[#D4B896]'
+      }`} />
     </motion.div>
   );
 }
