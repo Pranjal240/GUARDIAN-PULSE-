@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Maximize2, Minimize2, X, AlertTriangle } from 'lucide-react';
+import { Video, Maximize2, Minimize2, X, AlertTriangle, Loader2 } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
@@ -13,7 +13,7 @@ interface SOSCameraViewerProps {
 /**
  * Admin-side component that displays the patient's SOS camera feed.
  * Subscribes to the user's sosCamera node in Firebase and renders the latest frame.
- * Shows the feed as long as there's a recent frame, even if the camera was just deactivated.
+ * Shows the feed as long as the camera is active OR there's a recent frame.
  */
 export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
   const [frame, setFrame] = useState<string | null>(null);
@@ -21,7 +21,14 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
   const [updatedAt, setUpdatedAt] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const prevUserIdRef = useRef(userId);
+
+  // Keep "now" ticking so time-based visibility recalculates
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 2000);
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -31,6 +38,7 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
       setIsDismissed(false);
       setFrame(null);
       setIsActive(false);
+      setUpdatedAt(0);
       prevUserIdRef.current = userId;
     }
 
@@ -38,14 +46,9 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
     const unsub = onValue(camRef, (snap) => {
       if (snap.exists()) {
         const data = snap.val();
-        const active = !!data.active;
-        setIsActive(active);
-        if (data.frame) {
-          setFrame(data.frame);
-        }
-        if (data.updatedAt) {
-          setUpdatedAt(data.updatedAt);
-        }
+        setIsActive(!!data.active);
+        if (data.frame) setFrame(data.frame);
+        if (data.updatedAt) setUpdatedAt(data.updatedAt);
       } else {
         setIsActive(false);
       }
@@ -54,14 +57,14 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
   }, [userId]);
 
   // Show the viewer if:
-  // 1. Camera is currently active (streaming), OR
-  // 2. We have a recent frame (within the last 60 seconds) — so admin can see the last snapshot
-  const hasRecentFrame = frame && (Date.now() - updatedAt < 60000);
-  const shouldShow = (isActive || hasRecentFrame) && frame && !isDismissed;
+  // 1. Camera is currently active (even if no frame yet — show "Connecting..." state), OR
+  // 2. We have a frame from the last 60 seconds
+  const hasRecentFrame = !!frame && (now - updatedAt < 60000);
+  const shouldShow = (isActive || hasRecentFrame) && !isDismissed;
 
   if (!shouldShow) return null;
 
-  const timeSince = Date.now() - updatedAt;
+  const timeSince = now - updatedAt;
   const isStale = !isActive || timeSince > 10000;
 
   return (
@@ -107,12 +110,20 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
 
         {/* Feed */}
         <div className={`relative ${isExpanded ? 'aspect-[4/3]' : 'aspect-[16/10]'}`}>
-          <img
-            src={frame}
-            alt="Patient SOS camera"
-            className="w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
-          />
+          {frame ? (
+            <img
+              src={frame}
+              alt="Patient SOS camera"
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+          ) : (
+            /* No frame yet — camera is active but still connecting */
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[#1A0F0F] text-[#E05252]">
+              <Loader2 className="w-8 h-8 animate-spin mb-2" />
+              <span className="text-xs font-mono">Connecting to patient camera...</span>
+            </div>
+          )}
 
           {/* Live / Status indicator */}
           <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full ${
@@ -129,17 +140,21 @@ export default function SOSCameraViewer({ userId }: SOSCameraViewerProps) {
           </div>
 
           {/* Timestamp */}
-          <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[8px] text-white/70 font-mono">
-            {new Date(updatedAt).toLocaleTimeString()}
-          </div>
+          {updatedAt > 0 && (
+            <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[8px] text-white/70 font-mono">
+              {new Date(updatedAt).toLocaleTimeString()}
+            </div>
+          )}
         </div>
 
         {/* Status footer */}
         <div className={`px-3 py-1.5 text-center ${isActive ? 'bg-[#2D1515]' : 'bg-[#2B2515]'}`}>
           <p className={`text-[9px] ${isActive ? 'text-[#E05252]/70' : 'text-[#D4B896]/70'}`}>
-            {isActive
-              ? `🔴 Receiving live feed — updated ${Math.round(timeSince / 1000)}s ago`
-              : `📷 Camera ended — last frame from ${new Date(updatedAt).toLocaleTimeString()}`
+            {isActive && !frame
+              ? '🔴 Camera active — waiting for first frame...'
+              : isActive
+                ? `🔴 Receiving live feed — updated ${Math.round(timeSince / 1000)}s ago`
+                : `📷 Camera ended — last frame from ${new Date(updatedAt).toLocaleTimeString()}`
             }
           </p>
         </div>

@@ -112,7 +112,8 @@ export function useAllPatients() {
           const val = child.val();
           const computedName = val.name 
             || `${val.firstName || ''} ${val.lastName || ''}`.trim() 
-            || 'Unknown';
+            || (val.email ? val.email.split('@')[0] : '')
+            || 'Patient';
           patients.push({ 
             ...val,
             userId: child.key || val.userId || '', 
@@ -369,7 +370,7 @@ export function useUserProfile(userId: string) {
           const val = snapshot.val();
           setData({ 
             userId: snapshot.key || val.userId || '',
-            name: val.name || `${val.firstName || ''} ${val.lastName || ''}`.trim() || 'Unknown',
+            name: val.name || `${val.firstName || ''} ${val.lastName || ''}`.trim() || (val.email ? val.email.split('@')[0] : '') || 'Patient',
             ...val 
           });
         } else {

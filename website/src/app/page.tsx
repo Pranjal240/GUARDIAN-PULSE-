@@ -3,7 +3,7 @@
 import { useUser, useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 
@@ -34,6 +34,19 @@ export default function Home() {
 
         if (snapshot.exists()) {
           role = snapshot.val().role;
+          // EXISTING user — ensure 'name' field is set (fixes "Unknown" for old users)
+          const existingName = snapshot.val().name;
+          if (!existingName || existingName === 'Unknown') {
+            const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+              || (snapshot.val().firstName ? `${snapshot.val().firstName || ''} ${snapshot.val().lastName || ''}`.trim() : '')
+              || user.primaryEmailAddress?.emailAddress?.split('@')[0]
+              || 'Patient';
+            await update(userRef, {
+              name: fullName,
+              email: email || snapshot.val().email || '',
+              avatarUrl: user.imageUrl || snapshot.val().avatarUrl || '',
+            });
+          }
         } else {
           // NEW USER — determine initial role
           const savedRole = localStorage.getItem('guardian_pulse_login_role');
@@ -67,8 +80,12 @@ export default function Home() {
             role = 'patient';
           }
 
-          // Save new user profile
+          // Save new user profile — include combined 'name' field
+          const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+            || user.primaryEmailAddress?.emailAddress?.split('@')[0]
+            || 'Patient';
           await set(userRef, {
+            name: fullName,
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             email: email,
