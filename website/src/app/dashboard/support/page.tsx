@@ -28,19 +28,27 @@ function usePatientLocation(userId: string) {
 }
 
 // Hook: Get the latest chat message for each patient to show preview
+// Uses refs for stable listener tracking to avoid teardown on every rerender
 function useAllChatSummaries(patientIds: string[]) {
   const [summaries, setSummaries] = useState<Map<string, { lastMsg: string; lastTime: number; count: number }>>(new Map());
+  const listenersRef = useRef<Map<string, () => void>>(new Map());
+  const mapRef = useRef<Map<string, { lastMsg: string; lastTime: number; count: number }>>(new Map());
+
+  // Sort IDs to create a STABLE dependency key regardless of patient list order
+  const stableKey = useMemo(() => [...patientIds].sort().join(','), [patientIds]);
 
   useEffect(() => {
-    if (!patientIds.length) return;
-    const callbacks: (() => void)[] = [];
-    const map = new Map<string, { lastMsg: string; lastTime: number; count: number }>();
+    if (!stableKey) return;
+    const currentIds = new Set(patientIds);
+    const existingIds = new Set(listenersRef.current.keys());
 
-    patientIds.forEach(id => {
+    // Subscribe to NEW patient IDs that don't have a listener yet
+    for (const id of currentIds) {
+      if (existingIds.has(id)) continue; // already listening
       const q = query(ref(db, 'chat_messages'), orderByChild('userId'), equalTo(id));
       const unsub = onValue(q, (snap) => {
         if (!snap.exists()) {
-          map.delete(id);
+          mapRef.current.delete(id);
         } else {
           const msgs: ChatMessage[] = [];
           snap.forEach(child => {
@@ -48,19 +56,32 @@ function useAllChatSummaries(patientIds: string[]) {
           });
           msgs.sort((a, b) => a.timestamp - b.timestamp);
           const lastMsg = msgs[msgs.length - 1];
-          map.set(id, {
+          mapRef.current.set(id, {
             lastMsg: lastMsg?.text || '',
             lastTime: lastMsg?.timestamp || 0,
             count: msgs.filter(m => m.sender === 'patient').length,
           });
         }
-        setSummaries(new Map(map));
+        setSummaries(new Map(mapRef.current));
       });
-      callbacks.push(unsub);
-    });
+      listenersRef.current.set(id, unsub);
+    }
 
-    return () => callbacks.forEach(cb => cb());
-  }, [patientIds.join(',')]);
+    // Unsubscribe from patients that are no longer in the list
+    for (const id of existingIds) {
+      if (currentIds.has(id)) continue;
+      listenersRef.current.get(id)?.();
+      listenersRef.current.delete(id);
+      mapRef.current.delete(id);
+    }
+
+    return () => {
+      // Cleanup all on unmount
+      listenersRef.current.forEach(unsub => unsub());
+      listenersRef.current.clear();
+      mapRef.current.clear();
+    };
+  }, [stableKey]);
 
   return summaries;
 }
@@ -80,7 +101,8 @@ export default function SupportChatPage() {
   const messagesEndRef = useRef<HTMLInputElement>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
-  const patientIds = useMemo(() => patients.map(p => p.userId || '').filter(Boolean), [patients]);
+  // Sort IDs so the array order doesn't change when patients re-sort by lastActive
+  const patientIds = useMemo(() => patients.map(p => p.userId || '').filter(Boolean).sort(), [patients]);
   const chatSummaries = useAllChatSummaries(patientIds);
 
   // Scroll to bottom when messages update

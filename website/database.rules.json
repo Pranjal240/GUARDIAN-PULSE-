@@ -2,6 +2,18 @@
   "rules": {
     ".read": "true",
     ".write": "true",
-    "//": "WARNING: These rules are open for development since Clerk is handling frontend authentication. For true production security, generate custom Firebase tokens using Clerk JWTs on your backend."
+    "//": "WARNING: These rules are open for development since Clerk is handling frontend authentication. For true production security, generate custom Firebase tokens using Clerk JWTs on your backend.",
+    "chat_messages": {
+      ".indexOn": ["userId", "timestamp"]
+    },
+    "ecg_readings": {
+      ".indexOn": ["userId", "timestamp"]
+    },
+    "alerts": {
+      ".indexOn": ["userId", "status", "createdAt"]
+    },
+    "users": {
+      ".indexOn": ["role", "email"]
+    }
   }
 }
