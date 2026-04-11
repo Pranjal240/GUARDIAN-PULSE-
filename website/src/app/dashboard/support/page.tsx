@@ -2,13 +2,30 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAllPatients, useChatMessages, ChatMessage } from '@/lib/firebase-hooks';
-import { Search, Phone, MessageSquare, CheckCircle, Clock, Zap, Send, Info, ArrowLeft, LifeBuoy, X } from 'lucide-react';
-import { ref, push, update, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import { Search, Phone, MessageSquare, CheckCircle, Clock, Zap, Send, Info, ArrowLeft, LifeBuoy, X, MapPin, Trash2, ImagePlus, ZoomIn } from 'lucide-react';
+import { ref, push, update, onValue, query, orderByChild, equalTo, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import ImageLightbox from '@/components/ImageLightbox';
+import SOSCameraViewer from '@/components/SOSCameraViewer';
+
+// Hook: get patient's last known location from Firebase
+function usePatientLocation(userId: string) {
+  const [loc, setLoc] = useState<{ lat: number; lng: number; updatedAt: number } | null>(null);
+  useEffect(() => {
+    if (!userId) { setLoc(null); return; }
+    const locRef = ref(db, `users/${userId}/lastLocation`);
+    const unsub = onValue(locRef, (snap) => {
+      if (snap.exists()) setLoc(snap.val());
+      else setLoc(null);
+    });
+    return () => unsub();
+  }, [userId]);
+  return loc;
+}
 
 // Hook: Get the latest chat message for each patient to show preview
 function useAllChatSummaries(patientIds: string[]) {
@@ -57,9 +74,11 @@ export default function SupportChatPage() {
   const [showMobileChat, setShowMobileChat] = useState(false);
   
   const { data: messages } = useChatMessages(activePatientId || '');
+  const patientLocation = usePatientLocation(activePatientId || '');
   const [inputValue, setInputValue] = useState('');
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLInputElement>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const patientIds = useMemo(() => patients.map(p => p.userId || '').filter(Boolean), [patients]);
   const chatSummaries = useAllChatSummaries(patientIds);
@@ -138,6 +157,78 @@ export default function SupportChatPage() {
       console.error('Failed to resolve support', err);
       toast.error('Failed to resolve');
     }
+  };
+
+  // Clear all chat messages for active patient
+  const handleClearChat = async () => {
+    if (!activePatientId) return;
+    if (!confirm('Clear entire chat history for this patient? This cannot be undone.')) return;
+    try {
+      // Delete all chat messages for this user
+      const chatRef = ref(db, 'chat_messages');
+      const q = query(chatRef, orderByChild('userId'), equalTo(activePatientId));
+      const { get } = await import('firebase/database');
+      const snap = await get(q);
+      const updates: Record<string, null> = {};
+      snap.forEach(child => { updates[`chat_messages/${child.key}`] = null; });
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+      }
+      toast.success('Chat history cleared');
+    } catch (err) {
+      console.error('Failed to clear chat', err);
+      toast.error('Failed to clear chat');
+    }
+  };
+
+  // Media upload handler (compress image to base64 data URL)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePatientId || !user) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are supported');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        // Compress using canvas
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          
+          await push(ref(db, 'chat_messages'), {
+            userId: activePatientId,
+            sender: 'support',
+            text: '🖼️ Image shared by admin',
+            mediaUrl: dataUrl,
+            timestamp: Date.now(),
+          });
+          toast.success('Image sent');
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Failed to upload image');
+    }
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const selectPatient = (id: string | null) => {
@@ -290,6 +381,19 @@ export default function SupportChatPage() {
               </div>
               
               <div className="flex items-center space-x-2 md:space-x-3">
+                 {/* Location badge */}
+                 {patientLocation && (
+                   <a
+                     href={`https://www.google.com/maps?q=${patientLocation.lat},${patientLocation.lng}`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(76,175,120,0.1)] hover:bg-[rgba(76,175,120,0.2)] text-[#4CAF78] border border-[#4CAF78]/30 rounded-lg transition-colors text-xs font-medium"
+                     title={`${patientLocation.lat.toFixed(4)}, ${patientLocation.lng.toFixed(4)}`}
+                   >
+                     <MapPin className="w-3.5 h-3.5" />
+                     <span className="hidden sm:inline">Location</span>
+                   </a>
+                 )}
                  {activePatient.needsSupport && (
                    <button 
                      onClick={handleEndSupport}
@@ -302,6 +406,13 @@ export default function SupportChatPage() {
                  <a href={`tel:${activePatient?.phone ?? ''}`} className="p-2 bg-[rgba(212,184,150,0.1)] hover:bg-[rgba(212,184,150,0.2)] text-[#D4B896] rounded-lg transition-colors">
                    <Phone className="w-5 h-5" />
                  </a>
+                 <button
+                   onClick={handleClearChat}
+                   className="p-2 bg-[rgba(224,82,82,0.08)] hover:bg-[rgba(224,82,82,0.18)] text-[#E05252]/70 hover:text-[#E05252] rounded-lg transition-colors"
+                   title="Clear chat history"
+                 >
+                   <Trash2 className="w-4 h-4" />
+                 </button>
               </div>
             </div>
 
@@ -321,6 +432,48 @@ export default function SupportChatPage() {
                    const isSystem = m.sender === 'system' || m.sender === 'ai';
                    
                    if (isSystem) {
+                     // Check if this is a location message
+                     const isLocation = m.text.includes('google.com/maps');
+                     const mapsUrl = m.text.match(/(https:\/\/www\.google\.com\/maps\?q=[^\s]+)/)?.[1];
+                     const isEmergencyLoc = m.text.includes('EMERGENCY LOCATION');
+                     
+                     if (isLocation && mapsUrl) {
+                       // Extract coordinates from text
+                       const coordMatch = m.text.match(/([\d.-]+),\s*([\d.-]+)/);
+                       const lat = coordMatch?.[1] || '';
+                       const lng = coordMatch?.[2] || '';
+                       
+                       return (
+                         <motion.div initial={{opacity:0, y:10, scale: 0.95}} animate={{opacity:1, y:0, scale: 1}} key={m.id} className="flex justify-center my-3 md:my-4">
+                           <div className={`${isEmergencyLoc ? 'bg-[#2D1515] border-[#E05252]/30' : 'bg-[#1C2B1E] border-[#4CAF78]/30'} border rounded-xl px-4 py-3 max-w-sm w-full`}>
+                             <div className="flex items-center gap-2 mb-2">
+                               <div className={`p-1.5 rounded-lg ${isEmergencyLoc ? 'bg-[#E05252]/15' : 'bg-[#4CAF78]/15'}`}>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isEmergencyLoc ? '#E05252' : '#4CAF78'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                               </div>
+                               <span className={`text-[10px] font-bold uppercase tracking-wider ${isEmergencyLoc ? 'text-[#E05252]' : 'text-[#4CAF78]'}`}>
+                                 {isEmergencyLoc ? '🚨 Emergency Location' : '📍 Patient Location'}
+                               </span>
+                             </div>
+                             <p className="text-[#9BA897] text-xs font-mono mb-2">{lat}, {lng}</p>
+                             <a 
+                               href={mapsUrl} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className={`flex items-center justify-center gap-2 text-xs font-medium py-2 px-3 rounded-lg transition-colors ${
+                                 isEmergencyLoc 
+                                   ? 'bg-[#E05252]/15 text-[#E05252] hover:bg-[#E05252]/25 border border-[#E05252]/30' 
+                                   : 'bg-[#4CAF78]/15 text-[#4CAF78] hover:bg-[#4CAF78]/25 border border-[#4CAF78]/30'
+                               }`}
+                             >
+                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                               Open in Google Maps
+                             </a>
+                             <p className="text-[9px] text-[#5C6B58] mt-1.5 text-right">{format(m.timestamp, 'h:mm a')}</p>
+                           </div>
+                         </motion.div>
+                       );
+                     }
+                     
                      return (
                        <motion.div initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} key={m.id} className="flex justify-center my-3 md:my-4">
                          <div className="bg-[#1C2B1E] border border-[rgba(212,184,150,0.1)] px-3 md:px-4 py-1.5 rounded-full text-[10px] md:text-xs text-[#9BA897] flex items-center space-x-2">
@@ -348,6 +501,17 @@ export default function SupportChatPage() {
                            </span>
                          </div>
                          <p className="text-xs md:text-sm leading-relaxed">{m.text}</p>
+                         {m.mediaUrl && (
+                           <div
+                             className="mt-2 rounded-lg overflow-hidden border border-[rgba(212,184,150,0.1)] cursor-pointer group relative"
+                             onClick={() => setLightboxSrc(m.mediaUrl!)}
+                           >
+                             <img src={m.mediaUrl} alt="Shared media" className="max-w-full max-h-60 object-contain rounded-lg transition-transform group-hover:scale-[1.02]" loading="lazy" />
+                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                               <div className="bg-black/50 p-2 rounded-full"><ZoomIn className="w-4 h-4 text-white" /></div>
+                             </div>
+                           </div>
+                         )}
                          <div className={`text-[9px] md:text-[10px] mt-1.5 text-right ${isSupport ? 'text-[#9BA897]' : 'text-[#7A8A76]'}`}>
                             {format(m.timestamp, 'h:mm a')}
                          </div>
@@ -359,9 +523,32 @@ export default function SupportChatPage() {
                <div ref={messagesEndRef} />
             </div>
 
+            {/* SOS Camera Viewer */}
+            {activePatientId && (
+              <div className="px-4 pb-2">
+                <SOSCameraViewer userId={activePatientId} />
+              </div>
+            )}
+
             {/* Input Area */}
             <div className="p-3 md:p-4 bg-[#1C2B1E] border-t border-[rgba(212,184,150,0.1)]">
               <form onSubmit={handleSendMessage} className="flex items-center space-x-2 md:space-x-3">
+                 {/* Hidden file input */}
+                 <input
+                   ref={fileInputRef}
+                   type="file"
+                   accept="image/*"
+                   onChange={handleMediaUpload}
+                   className="hidden"
+                 />
+                 <button
+                   type="button"
+                   onClick={() => fileInputRef.current?.click()}
+                   className="p-2.5 bg-[#111811] hover:bg-[#1C2B1E] border border-[#2A3D2E] hover:border-[#D4B896] text-[#7A8A76] hover:text-[#D4B896] rounded-xl transition-colors shrink-0"
+                   title="Upload image"
+                 >
+                   <ImagePlus className="w-4 h-4" />
+                 </button>
                  <input 
                    type="text" 
                    value={inputValue}
@@ -397,6 +584,10 @@ export default function SupportChatPage() {
         )}
       </div>
       
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} alt="Shared media" onClose={() => setLightboxSrc(null)} />
+      )}
     </div>
   );
 }

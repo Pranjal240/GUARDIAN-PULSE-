@@ -14,12 +14,13 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
   const latest = ecgData.length > 0 ? ecgData[ecgData.length - 1] : null;
   const currentBpm = latest?.bpm || 0;
   
-  const status = currentBpm > 0 ? calculateBpmStatus(currentBpm) : 'normal';
+  const status = currentBpm > 0 ? calculateBpmStatus(currentBpm) : 'offline';
   const isCritical = status === 'critical';
   const isWarning = status === 'warning';
+  const isOffline = status === 'offline';
   
   // Colors
-  const sColor = isCritical ? '#E05252' : isWarning ? '#D4943A' : '#4CAF78';
+  const sColor = isOffline ? '#6B7F67' : isCritical ? '#E05252' : isWarning ? '#D4943A' : '#4CAF78';
   
   const hrv = ecgData.length > 0 ? Math.round(calculateHRV(ecgData.map(d => d.rrIntervals?.[d.rrIntervals.length - 1] || 800))) : '--';
   const updatedAgo = latest ? Math.round((Date.now() - latest.timestamp) / 1000) : '--';
@@ -52,7 +53,9 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
             ? 'bg-[rgba(224,82,82,0.15)] text-[#E05252] border-[rgba(224,82,82,0.3)] animate-pulse'
             : isWarning
               ? 'bg-[rgba(212,148,58,0.15)] text-[#D4943A] border-[rgba(212,148,58,0.3)]'
-              : 'bg-[rgba(76,175,120,0.15)] text-[#4CAF78] border-[rgba(76,175,120,0.3)]'
+              : isOffline
+                ? 'bg-[rgba(107,127,103,0.15)] text-[#6B7F67] border-[rgba(107,127,103,0.3)]'
+                : 'bg-[rgba(76,175,120,0.15)] text-[#4CAF78] border-[rgba(76,175,120,0.3)]'
         }`}>
           {status}
         </div>
@@ -88,7 +91,13 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
         
         <div className="text-right">
           <p className="text-[#5C6B58] text-xs">HRV: {hrv}ms</p>
-          <p className="text-[#5C6B58] text-[10px]">Updated {updatedAgo}s ago</p>
+          <p className="text-[#5C6B58] text-[10px]">
+            {updatedAgo === '--' ? 'Offline' : 
+             typeof updatedAgo === 'number' && updatedAgo > 86400 ? `${Math.floor(updatedAgo / 86400)}d ago` :
+             typeof updatedAgo === 'number' && updatedAgo > 3600 ? `${Math.floor(updatedAgo / 3600)}h ago` :
+             typeof updatedAgo === 'number' && updatedAgo > 60 ? `${Math.floor(updatedAgo / 60)}m ago` :
+             `${updatedAgo}s ago`}
+          </p>
         </div>
       </div>
     </motion.div>

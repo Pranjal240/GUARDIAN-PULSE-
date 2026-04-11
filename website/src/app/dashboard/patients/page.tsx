@@ -98,11 +98,11 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                 </div>
                 <div className="flex items-center gap-2 text-sm bg-[#141A14] p-2.5 rounded-lg border border-[rgba(212,184,150,0.05)]">
                   <Shield size={14} className="text-[#A8B5A2] shrink-0" />
-                  <span className="text-[#F2E8D9] truncate">{patient.emergencyContact1Name ?? '—'}</span>
+                  <span className="text-[#F2E8D9] truncate">{patient.emergencyContact1Name || 'Emergency Services'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm bg-[#141A14] p-2.5 rounded-lg border border-[rgba(212,184,150,0.05)]">
                   <Phone size={14} className="text-[#A8B5A2] shrink-0" />
-                  <span className="text-[#F2E8D9] truncate">{patient.emergencyContact1Phone ?? '—'}</span>
+                  <span className="text-[#F2E8D9] truncate">{patient.emergencyContact1Phone || '112'}</span>
                 </div>
               </div>
 

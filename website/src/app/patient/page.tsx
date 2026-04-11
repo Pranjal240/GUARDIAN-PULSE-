@@ -2,16 +2,18 @@
 
 import { useUser, UserButton } from '@clerk/nextjs';
 import { usePatientECG, calculateBpmStatus, useChatMessages } from '@/lib/firebase-hooks';
-import { startDemoDataSeeder, stopDemoDataSeeder, createSupportAlert, createEmergencyAlert, seedDemoVitals, syncVitalsToFirebase } from '@/lib/demo-data-seeder';
+import { startDemoDataSeeder, stopDemoDataSeeder, createSupportAlert, createEmergencyAlert, seedDemoVitals, syncVitalsToFirebase, generatePatientBaseline } from '@/lib/demo-data-seeder';
 import LiveECGChart from '@/components/LiveECGChart';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Phone, LifeBuoy, Activity, Send, Wind,
   MessageSquare, Thermometer, Droplets, Brain, Zap,
   TrendingUp, Clock, Pill, ChevronUp, ChevronDown, Waves,
-  Check, X, Shield, AlertTriangle, Gauge, PersonStanding
+  Check, X, Shield, AlertTriangle, Gauge, PersonStanding, ImagePlus, ZoomIn
 } from 'lucide-react';
 import DiagnosticReportsList from '@/components/DiagnosticReportsList';
+import ImageLightbox from '@/components/ImageLightbox';
+import SOSCamera from '@/components/SOSCamera';
 import { ref, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import toast from 'react-hot-toast';
@@ -63,24 +65,49 @@ export default function PatientDashboard() {
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const patientFileRef = useRef<HTMLInputElement>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [sosCameraActive, setSosCameraActive] = useState(false);
+  const [activeSessionIdx, setActiveSessionIdx] = useState<number | null>(null); // null = show latest/new
 
   // Interactive medication state
   const [medStatus, setMedStatus] = useState([true, false, false]);
   const [dismissedTips, setDismissedTips] = useState<number[]>([]);
   const [expandedVital, setExpandedVital] = useState<string | null>(null);
 
-  // Simulated live vitals
+  // Simulated live vitals — initialized with patient-specific baseline
+  const [vitalsInitialized, setVitalsInitialized] = useState(false);
   const [vitals, setVitals] = useState({
     spO2: 98, hrv: 42, stress: 24, bodyTemp: 98.4,
     respRate: 16, bloodPressureSys: 118,
     bloodPressureDia: 76,
-    // Guardian Pulse medical diagnostics
-    heartRhythm: 92, // 0-100 sinus rhythm regularity
-    tremorScore: 8,   // 0-100 tremor severity (lower = better)
-    seizureRisk: 5,   // 0-100 seizure probability
-    gaitStability: 88, // 0-100 gait/balance score
-    panicScore: 12,   // 0-100 anxiety/panic level
+    heartRhythm: 92,
+    tremorScore: 8,
+    seizureRisk: 5,
+    gaitStability: 88,
+    panicScore: 12,
   });
+
+  // Set patient-specific baseline once user is available
+  useEffect(() => {
+    if (!user?.id || vitalsInitialized) return;
+    const baseline = generatePatientBaseline(user.id);
+    setVitals({
+      spO2: baseline.spO2,
+      hrv: baseline.hrv,
+      stress: baseline.stress,
+      bodyTemp: baseline.bodyTemp,
+      respRate: baseline.respRate,
+      bloodPressureSys: baseline.bloodPressureSys,
+      bloodPressureDia: baseline.bloodPressureDia,
+      heartRhythm: baseline.heartRhythm,
+      tremorScore: baseline.tremorScore,
+      seizureRisk: baseline.seizureRisk,
+      gaitStability: baseline.gaitStability,
+      panicScore: baseline.panicScore,
+    });
+    setVitalsInitialized(true);
+  }, [user?.id, vitalsInitialized]);
 
   const medications = useMemo(() => [
     { name: 'Metoprolol 25mg', time: '8:00 AM', color: '#4CAF78', dosage: 'Heart rate control' },
@@ -111,52 +138,107 @@ export default function PatientDashboard() {
     };
   }, [user?.id]);
 
-  // ─── Sync vitals to Firebase periodically ───
+  // ─── Sync vitals to Firebase periodically (every 5s) ───
   useEffect(() => {
     if (!user?.id) return;
+    // Sync immediately on mount
+    syncVitalsToFirebase(user.id, vitals);
     const syncInterval = setInterval(() => {
       syncVitalsToFirebase(user.id, vitals);
-    }, 2500); // sync every 2.5s
+    }, 5000);
     return () => clearInterval(syncInterval);
   }, [user?.id, vitals]);
 
-  // ─── Continuous fluid vitals fluctuation ───
+  // ─── Clock update every second ───
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(new Date());
+    const clockTimer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  // ─── SLOW vitals: SpO2, HRV, stress, body temp, resp rate, BP, diagnostics ───
+  // Updates every 5 seconds with ±1 drift (realistic biological changes)
+  useEffect(() => {
+    const slowTimer = setInterval(() => {
       setVitals(prev => {
-        // Generate continuous random walks using target points
-        const targetHeart = 82 + (Math.random() * 20 - 10);
-        const targetTremor = 5 + (Math.random() * 25);
-        const targetSeizure = 10 + (Math.random() * 20);
-        const targetGait = 85 + (Math.random() * 15 - 5);
-        const targetPanic = 15 + (Math.random() * 30);
-        
+        // Tiny drift function: current ± maxStep, clamped to [min, max]
+        const drift = (val: number, min: number, max: number, step = 1) => {
+          const delta = (Math.random() - 0.5) * 2 * step;
+          return Math.min(max, Math.max(min, Math.round(val + delta)));
+        };
+        const driftFloat = (val: number, min: number, max: number, step = 0.1) => {
+          const delta = (Math.random() - 0.5) * 2 * step;
+          return Math.min(max, Math.max(min, +(val + delta).toFixed(1)));
+        };
+
         return {
-          spO2: Math.min(100, Math.max(90, Math.round(prev.spO2 + (Math.random() - 0.5) * 3))),
-          hrv: Math.min(65, Math.max(30, prev.hrv + Math.floor(Math.random() * 5 - 2))),
-          stress: Math.min(80, Math.max(10, prev.stress + Math.floor(Math.random() * 7 - 3))),
-          bodyTemp: Math.min(99.2, Math.max(97.5, +(prev.bodyTemp + (Math.random() - 0.5) * 0.2).toFixed(1))),
-          respRate: Math.min(22, Math.max(12, prev.respRate + Math.floor(Math.random() * 3 - 1))),
-          bloodPressureSys: Math.min(135, Math.max(105, prev.bloodPressureSys + Math.floor(Math.random() * 5 - 2))),
-          bloodPressureDia: Math.min(90, Math.max(65, prev.bloodPressureDia + Math.floor(Math.random() * 3 - 1))),
-          
-          heartRhythm: Math.round(prev.heartRhythm + (targetHeart - prev.heartRhythm) * 0.4),
-          tremorScore: Math.round(prev.tremorScore + (targetTremor - prev.tremorScore) * 0.3),
-          seizureRisk: Math.round(prev.seizureRisk + (targetSeizure - prev.seizureRisk) * 0.35),
-          gaitStability: Math.round(prev.gaitStability + (targetGait - prev.gaitStability) * 0.25),
-          panicScore: Math.round(prev.panicScore + (targetPanic - prev.panicScore) * 0.5),
+          ...prev,
+          spO2: drift(prev.spO2, 94, 100, 1),
+          hrv: drift(prev.hrv, 30, 65, 1),
+          stress: drift(prev.stress, 10, 60, 1),
+          bodyTemp: driftFloat(prev.bodyTemp, 97.5, 99.2, 0.1),
+          respRate: drift(prev.respRate, 12, 20, 1),
+          bloodPressureSys: drift(prev.bloodPressureSys, 105, 135, 1),
+          bloodPressureDia: drift(prev.bloodPressureDia, 65, 88, 1),
+          // Diagnostic scores — very slow ±1 drift
+          heartRhythm: drift(prev.heartRhythm, 78, 98, 1),
+          tremorScore: drift(prev.tremorScore, 2, 25, 1),
+          seizureRisk: drift(prev.seizureRisk, 2, 20, 1),
+          gaitStability: drift(prev.gaitStability, 75, 98, 1),
+          panicScore: drift(prev.panicScore, 5, 35, 1),
         };
       });
-    }, 1200);
-    return () => clearInterval(timer);
+    }, 5000); // every 5 seconds
+    return () => clearInterval(slowTimer);
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // ─── Request Support: sets needsSupport + creates alert + auto-opens chat ───
+  // ─── Geolocation: fire-and-forget, sends location as chat message ───
+  const sendLocationToChat = useCallback((userId: string, isEmergency: boolean) => {
+    if (!navigator.geolocation) {
+      // No geolocation API — send fallback message
+      push(ref(db, 'chat_messages'), {
+        userId, sender: 'system',
+        text: isEmergency
+          ? '🚨📍 EMERGENCY LOCATION: Browser does not support geolocation.'
+          : '📍 Patient location: Browser does not support geolocation.',
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        await push(ref(db, 'chat_messages'), {
+          userId, sender: 'system',
+          text: isEmergency
+            ? `🚨📍 EMERGENCY LOCATION: ${lat.toFixed(6)}, ${lng.toFixed(6)} — https://www.google.com/maps?q=${lat},${lng}`
+            : `📍 Patient location: ${lat.toFixed(6)}, ${lng.toFixed(6)} — https://www.google.com/maps?q=${lat},${lng}`,
+          timestamp: Date.now(),
+        });
+        await update(ref(db, `users/${userId}`), {
+          lastLocation: { lat, lng, updatedAt: Date.now() },
+        });
+      },
+      async () => {
+        // Permission denied or error — still send a message
+        await push(ref(db, 'chat_messages'), {
+          userId, sender: 'system',
+          text: isEmergency
+            ? '🚨📍 EMERGENCY LOCATION: Location access was denied by patient. Please contact them directly.'
+            : '📍 Patient location: Location access was denied. Please contact the patient for their location.',
+          timestamp: Date.now(),
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }, []);
+
+  // ─── Request Support: sets needsSupport + creates alert + sends location + auto-opens chat ───
   const requestSupport = useCallback(async () => {
     if (!user) return;
     try {
@@ -173,6 +255,9 @@ export default function PatientDashboard() {
         timestamp: Date.now(),
       });
 
+      // Fire-and-forget: capture & send location in background
+      sendLocationToChat(user.id, false);
+
       // Open the chat panel
       setShowChat(true);
 
@@ -180,9 +265,9 @@ export default function PatientDashboard() {
     } catch {
       toast.error('Failed to request support');
     }
-  }, [user]);
+  }, [user, sendLocationToChat]);
 
-  // ─── Emergency SOS: creates critical alert + sets needsSupport ───
+  // ─── Emergency SOS: creates critical alert + sends location + sets needsSupport ───
   const handleEmergencySOS = useCallback(async () => {
     if (!user) return;
     try {
@@ -196,12 +281,16 @@ export default function PatientDashboard() {
         timestamp: Date.now(),
       });
 
+      // Fire-and-forget: capture & send location in background
+      sendLocationToChat(user.id, true);
+
       setShowChat(true);
+      setSosCameraActive(true);
       toast.success('Emergency SOS sent — help is on the way!', { icon: '🚨', duration: 5000 });
     } catch {
       toast.error('Failed to send SOS');
     }
-  }, [user]);
+  }, [user, sendLocationToChat]);
 
   // ─── Send Chat Message: auto-sets needsSupport on first message ───
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
@@ -220,6 +309,43 @@ export default function PatientDashboard() {
       toast.error('Failed to send message');
     }
   }, [chatInput, user]);
+
+  // ─── Patient Media Upload ───
+  const handlePatientMediaUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith('image/')) { toast.error('Only images are supported'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          await update(ref(db, `users/${user.id}`), { needsSupport: true });
+          await push(ref(db, 'chat_messages'), {
+            userId: user.id, sender: 'patient',
+            text: '🖼️ Image shared by patient',
+            mediaUrl: dataUrl,
+            timestamp: Date.now(),
+          });
+          toast.success('Image sent');
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch { toast.error('Failed to upload image'); }
+    if (patientFileRef.current) patientFileRef.current.value = '';
+  }, [user]);
 
   const toggleMed = useCallback((index: number) => {
     setMedStatus(prev => {
@@ -575,36 +701,38 @@ export default function PatientDashboard() {
         {/* ─── Row 5: Chat Support ─── */}
         <motion.div {...fadeUp(0.6)} className="bg-[#141E18] rounded-2xl md:rounded-3xl border border-[rgba(212,184,150,0.1)] overflow-hidden hover:border-[rgba(212,184,150,0.2)] transition-colors">
           {(() => {
-            // Count unread messages from support (not from patient themselves)
             const unreadCount = chatMessages.filter(m => m.sender === 'support' || m.sender === 'system' || m.sender === 'ai').length;
 
-            // Group messages into sessions (split by system "resolved" messages)
-            const sessions: { messages: typeof chatMessages; resolved: boolean }[] = [];
+            // Group messages into sessions
+            const sessions: { messages: typeof chatMessages; resolved: boolean; startTime: number }[] = [];
             let currentSession: typeof chatMessages = [];
             chatMessages.forEach(m => {
               currentSession.push(m);
               if (m.sender === 'system' && m.text.toLowerCase().includes('resolved')) {
-                sessions.push({ messages: [...currentSession], resolved: true });
+                sessions.push({ messages: [...currentSession], resolved: true, startTime: currentSession[0]?.timestamp || 0 });
                 currentSession = [];
               }
             });
             if (currentSession.length > 0) {
-              sessions.push({ messages: currentSession, resolved: false });
+              sessions.push({ messages: currentSession, resolved: false, startTime: currentSession[0]?.timestamp || 0 });
             }
             const hasResolvedSessions = sessions.some(s => s.resolved);
             const latestIsResolved = sessions.length > 0 && sessions[sessions.length - 1].resolved;
 
+            // Determine which session to display
+            const viewIdx = activeSessionIdx !== null ? activeSessionIdx : sessions.length - 1;
+            const viewingHistory = activeSessionIdx !== null && activeSessionIdx < sessions.length - 1;
+            const currentViewSession = sessions[viewIdx];
+
             return (
               <>
-                <button onClick={() => setShowChat(!showChat)}
+                <button onClick={() => { setShowChat(!showChat); setActiveSessionIdx(null); }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-4 bg-[rgba(0,0,0,0.2)] hover:bg-[rgba(0,0,0,0.3)] transition-colors cursor-pointer">
                   <div className="flex items-center gap-2.5 md:gap-3">
                     <div className="w-9 h-9 md:w-10 md:h-10 bg-[rgba(212,184,150,0.12)] rounded-full flex items-center justify-center relative">
                       <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-[#D4B896]" />
                       {unreadCount > 0 && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                           className="absolute -top-1 -right-1 w-4.5 h-4.5 md:w-5 md:h-5 bg-[#E05252] rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(224,82,82,0.5)]">
                           <span className="text-[8px] md:text-[9px] text-white font-bold">{Math.min(unreadCount, 9)}{unreadCount > 9 ? '+' : ''}</span>
                         </motion.div>
@@ -618,9 +746,9 @@ export default function PatientDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {hasResolvedSessions && (
-                      <span className="text-[8px] md:text-[9px] px-2 py-0.5 bg-[rgba(76,175,120,0.1)] text-[#4CAF78] border border-[#4CAF78]/30 rounded-full font-bold uppercase tracking-wider hidden sm:inline">
-                        History
+                    {sessions.length > 1 && (
+                      <span className="text-[8px] md:text-[9px] px-2 py-0.5 bg-[rgba(212,184,150,0.08)] text-[#D4B896] border border-[rgba(212,184,150,0.15)] rounded-full font-bold">
+                        {sessions.length} chats
                       </span>
                     )}
                     <ChevronUp className={`w-4 h-4 md:w-5 md:h-5 text-[#9BA897] transition-transform ${showChat ? 'rotate-180' : ''}`} />
@@ -631,89 +759,137 @@ export default function PatientDashboard() {
                   {showChat && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3 }}
                       className="border-t border-[rgba(212,184,150,0.08)] overflow-hidden">
+
+                      {/* ─── Session Picker Tabs ─── */}
+                      {sessions.length > 1 && (
+                        <div className="px-3 md:px-4 pt-2.5 pb-1.5 bg-[rgba(0,0,0,0.15)] border-b border-[rgba(212,184,150,0.06)] overflow-x-auto">
+                          <div className="flex gap-1.5 min-w-max">
+                            {sessions.map((s, idx) => {
+                              const isActive = idx === viewIdx;
+                              const date = new Date(s.startTime);
+                              const label = s.resolved
+                                ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · Resolved`
+                                : 'Current';
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={(e) => { e.stopPropagation(); setActiveSessionIdx(idx); }}
+                                  className={`px-3 py-1.5 rounded-lg text-[9px] md:text-[10px] font-semibold transition-all whitespace-nowrap ${
+                                    isActive
+                                      ? 'bg-[#D4B896] text-[#0C1210] shadow-[0_0_10px_rgba(212,184,150,0.2)]'
+                                      : s.resolved
+                                        ? 'bg-[rgba(76,175,120,0.08)] text-[#4CAF78] border border-[#4CAF78]/20 hover:bg-[rgba(76,175,120,0.15)]'
+                                        : 'bg-[rgba(212,184,150,0.06)] text-[#9BA897] border border-[rgba(212,184,150,0.1)] hover:bg-[rgba(212,184,150,0.1)]'
+                                  }`}
+                                >
+                                  {idx === sessions.length - 1 && !s.resolved ? '💬 New Chat' : `📋 ${label}`}
+                                </button>
+                              );
+                            })}
+                            {/* "Start New" button when latest is resolved */}
+                            {latestIsResolved && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setActiveSessionIdx(null); }}
+                                className={`px-3 py-1.5 rounded-lg text-[9px] md:text-[10px] font-semibold whitespace-nowrap transition-all ${
+                                  activeSessionIdx === null
+                                    ? 'bg-[#D4B896] text-[#0C1210]'
+                                    : 'bg-[rgba(212,184,150,0.06)] text-[#D4B896] border border-[rgba(212,184,150,0.15)] hover:bg-[rgba(212,184,150,0.1)]'
+                                }`}
+                              >
+                                ✨ New Chat
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ─── Messages Area ─── */}
                       <div className="h-[280px] md:h-[380px] overflow-y-auto p-4 md:p-5 space-y-2.5 md:space-y-3">
-                        {chatMessages.length === 0 ? (
+                        {/* Viewing history banner */}
+                        {viewingHistory && (
+                          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center justify-center gap-2 py-2 px-4 bg-[rgba(212,184,150,0.06)] border border-[rgba(212,184,150,0.1)] rounded-xl mb-3">
+                            <Clock className="w-3 h-3 text-[#D4B896]" />
+                            <span className="text-[10px] text-[#D4B896] font-medium">Viewing chat history — Session {viewIdx + 1}</span>
+                            <button onClick={() => setActiveSessionIdx(null)} className="text-[9px] text-[#4CAF78] font-bold hover:underline ml-2">Back to current</button>
+                          </motion.div>
+                        )}
+
+                        {(!currentViewSession || currentViewSession.messages.length === 0) && !viewingHistory ? (
                           <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
                             <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
                               <div className="bg-[rgba(212,184,150,0.05)] p-4 md:p-5 rounded-full border border-[rgba(212,184,150,0.1)]">
                                 <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-[#7A8A76]" />
                               </div>
                             </motion.div>
-                            <p className="text-[#9BA897] text-xs md:text-sm font-medium">No messages yet.</p>
-                            <p className="text-[#7A8A76] text-[10px] md:text-xs max-w-xs">Start a conversation to get medical support from our team.</p>
+                            <p className="text-[#9BA897] text-xs md:text-sm font-medium">Start a new conversation</p>
+                            <p className="text-[#7A8A76] text-[10px] md:text-xs max-w-xs">Type below to get medical support from our team.</p>
                           </div>
-                        ) : (
+                        ) : currentViewSession ? (
                           <>
-                            {sessions.map((session, sIdx) => (
-                              <div key={sIdx}>
-                                {/* Session divider for resolved sessions (except the first) */}
-                                {sIdx > 0 && (
-                                  <div className="flex items-center gap-3 my-4">
-                                    <div className="flex-1 h-px bg-[rgba(212,184,150,0.08)]" />
-                                    <span className="text-[9px] text-[#5C6B58] font-medium uppercase tracking-wider">
-                                      Session {sIdx + 1}
-                                    </span>
-                                    <div className="flex-1 h-px bg-[rgba(212,184,150,0.08)]" />
-                                  </div>
-                                )}
+                            {currentViewSession.messages.map((m, mIdx) => {
+                              const isMe = m.sender === 'patient';
+                              const isSystem = m.sender === 'system' || m.sender === 'ai';
 
-                                {session.messages.map((m, mIdx) => {
-                                  const isMe = m.sender === 'patient';
-                                  const isSystem = m.sender === 'system' || m.sender === 'ai';
+                              if (isSystem) {
+                                const isResolved = m.text.toLowerCase().includes('resolved');
+                                return (
+                                  <motion.div key={m.id}
+                                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: mIdx * 0.02 }}
+                                    className="flex justify-center my-3">
+                                    <div className={`flex items-center gap-1.5 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-medium border ${
+                                      isResolved
+                                        ? 'bg-[rgba(76,175,120,0.08)] border-[rgba(76,175,120,0.2)] text-[#4CAF78]'
+                                        : 'bg-[rgba(0,0,0,0.3)] border-[rgba(212,184,150,0.1)] text-[#9BA897]'
+                                    }`}>
+                                      {isResolved && <Check className="w-3 h-3" />}
+                                      {m.sender === 'ai' && <Zap className="w-3 h-3 text-[#D4B896]" />}
+                                      <span>{m.text}</span>
+                                    </div>
+                                  </motion.div>
+                                );
+                              }
 
-                                  if (isSystem) {
-                                    const isResolved = m.text.toLowerCase().includes('resolved');
-                                    return (
-                                      <motion.div key={m.id}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: mIdx * 0.02 }}
-                                        className="flex justify-center my-3">
-                                        <div className={`flex items-center gap-1.5 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-medium border ${
-                                          isResolved
-                                            ? 'bg-[rgba(76,175,120,0.08)] border-[rgba(76,175,120,0.2)] text-[#4CAF78]'
-                                            : 'bg-[rgba(0,0,0,0.3)] border-[rgba(212,184,150,0.1)] text-[#9BA897]'
-                                        }`}>
-                                          {isResolved && <Check className="w-3 h-3" />}
-                                          {m.sender === 'ai' && <Zap className="w-3 h-3 text-[#D4B896]" />}
-                                          <span>{m.text}</span>
+                              return (
+                                <motion.div key={m.id}
+                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ delay: mIdx * 0.02, duration: 0.2 }}
+                                  className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                  <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3.5 md:px-4 py-2.5 md:py-3 shadow-md ${
+                                    isMe
+                                      ? 'bg-[rgba(212,184,150,0.12)] text-[#F0E6D3] rounded-tr-sm border border-[rgba(212,184,150,0.2)]'
+                                      : 'bg-[#1C2B1E] text-[#F0E6D3] rounded-tl-sm border border-[#2A3D2E]'
+                                  }`}>
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      <span className={`text-[8px] md:text-[9px] font-bold uppercase tracking-wider ${isMe ? 'text-[#D4B896]' : 'text-[#4CAF78]'}`}>
+                                        {isMe ? 'You' : 'Support'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs md:text-sm leading-relaxed">{m.text}</p>
+                                    {m.mediaUrl && (
+                                      <div
+                                        className="mt-2 rounded-lg overflow-hidden border border-[rgba(212,184,150,0.1)] cursor-pointer group relative"
+                                        onClick={() => setLightboxSrc(m.mediaUrl!)}
+                                      >
+                                        <img src={m.mediaUrl} alt="Shared media" className="max-w-full max-h-48 object-contain rounded-lg transition-transform group-hover:scale-[1.02]" loading="lazy" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                          <div className="bg-black/50 p-2 rounded-full"><ZoomIn className="w-4 h-4 text-white" /></div>
                                         </div>
-                                      </motion.div>
-                                    );
-                                  }
-
-                                  return (
-                                    <motion.div key={m.id}
-                                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                                      transition={{ delay: mIdx * 0.02, duration: 0.2 }}
-                                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                      <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3.5 md:px-4 py-2.5 md:py-3 shadow-md ${
-                                        isMe
-                                          ? 'bg-[rgba(212,184,150,0.12)] text-[#F0E6D3] rounded-tr-sm border border-[rgba(212,184,150,0.2)]'
-                                          : 'bg-[#1C2B1E] text-[#F0E6D3] rounded-tl-sm border border-[#2A3D2E]'
-                                      }`}>
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                          <span className={`text-[8px] md:text-[9px] font-bold uppercase tracking-wider ${isMe ? 'text-[#D4B896]' : 'text-[#4CAF78]'}`}>
-                                            {isMe ? 'You' : 'Support'}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs md:text-sm leading-relaxed">{m.text}</p>
-                                        <p className={`text-[9px] md:text-[10px] mt-1.5 text-right font-medium ${isMe ? 'text-[#D4B896]/60' : 'text-[#7A8A76]'}`}>
-                                          {fmtMsgTime(m.timestamp)}
-                                        </p>
                                       </div>
-                                    </motion.div>
-                                  );
-                                })}
-                              </div>
-                            ))}
+                                    )}
+                                    <p className={`text-[9px] md:text-[10px] mt-1.5 text-right font-medium ${isMe ? 'text-[#D4B896]/60' : 'text-[#7A8A76]'}`}>
+                                      {fmtMsgTime(m.timestamp)}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
 
-                            {/* Show "New Conversation" prompt after resolution */}
-                            {latestIsResolved && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
+                            {/* Resolution prompt */}
+                            {currentViewSession.resolved && !viewingHistory && (
+                              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                                 className="flex flex-col items-center gap-2 py-4">
                                 <div className="w-10 h-px bg-[rgba(212,184,150,0.1)]" />
                                 <p className="text-[10px] md:text-xs text-[#5C6B58]">Session resolved by admin</p>
@@ -721,23 +897,40 @@ export default function PatientDashboard() {
                               </motion.div>
                             )}
                           </>
-                        )}
+                        ) : null}
                         <div ref={messagesEndRef} />
                       </div>
 
-                      {/* Chat Input */}
-                      <div className="p-3 md:p-4 bg-[rgba(0,0,0,0.15)] border-t border-[rgba(212,184,150,0.08)]">
-                        <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-3">
-                          <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
-                            className="flex-1 bg-[#0C1210] border border-[rgba(212,184,150,0.15)] focus:border-[#D4B896] text-[#F0E6D3] placeholder-[#5C6B58] rounded-xl px-3 md:px-4 py-2.5 md:py-3 outline-none transition-colors text-xs md:text-sm"
-                            placeholder={latestIsResolved ? 'Start a new conversation...' : 'Type your concern here...'} />
-                          <motion.button type="submit" disabled={!chatInput.trim()}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
-                            className="bg-[#D4B896] hover:bg-[#C4A882] disabled:opacity-40 disabled:cursor-not-allowed text-[#0C1210] p-2.5 md:p-3 rounded-xl transition-all font-bold shadow-[0_0_15px_rgba(212,184,150,0.2)]">
-                            <Send className="w-4 h-4 md:w-5 md:h-5" />
-                          </motion.button>
-                        </form>
-                      </div>
+                      {/* Chat Input — hidden when viewing history */}
+                      {!viewingHistory && (
+                        <div className="p-3 md:p-4 bg-[rgba(0,0,0,0.15)] border-t border-[rgba(212,184,150,0.08)]">
+                          <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-3">
+                            <input
+                              ref={patientFileRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePatientMediaUpload}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => patientFileRef.current?.click()}
+                              className="p-2.5 bg-[#0C1210] hover:bg-[#1C2B1E] border border-[rgba(212,184,150,0.15)] hover:border-[#D4B896] text-[#7A8A76] hover:text-[#D4B896] rounded-xl transition-colors shrink-0"
+                              title="Upload image"
+                            >
+                              <ImagePlus className="w-4 h-4" />
+                            </button>
+                            <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
+                              className="flex-1 bg-[#0C1210] border border-[rgba(212,184,150,0.15)] focus:border-[#D4B896] text-[#F0E6D3] placeholder-[#5C6B58] rounded-xl px-3 md:px-4 py-2.5 md:py-3 outline-none transition-colors text-xs md:text-sm"
+                              placeholder={latestIsResolved ? 'Start a new conversation...' : 'Type your concern here...'} />
+                            <motion.button type="submit" disabled={!chatInput.trim()}
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
+                              className="bg-[#D4B896] hover:bg-[#C4A882] disabled:opacity-40 disabled:cursor-not-allowed text-[#0C1210] p-2.5 md:p-3 rounded-xl transition-all font-bold shadow-[0_0_15px_rgba(212,184,150,0.2)]">
+                              <Send className="w-4 h-4 md:w-5 md:h-5" />
+                            </motion.button>
+                          </form>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -747,6 +940,16 @@ export default function PatientDashboard() {
         </motion.div>
 
       </main>
+
+      {/* ─── Image Lightbox ─── */}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} alt="Shared media" onClose={() => setLightboxSrc(null)} />
+      )}
+
+      {/* ─── SOS Camera ─── */}
+      {user && (
+        <SOSCamera userId={user.id} isActive={sosCameraActive} onClose={() => setSosCameraActive(false)} />
+      )}
     </div>
   );
 }

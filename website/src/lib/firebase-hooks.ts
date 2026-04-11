@@ -26,6 +26,11 @@ export interface Patient {
   fcmToken?: string
   needsSupport?: boolean
   avatarUrl?: string
+  lastActive?: number
+  lastVitals?: {
+    updatedAt?: number
+    [key: string]: unknown
+  }
 }
 
 export interface EcgReading {
@@ -54,6 +59,7 @@ export interface ChatMessage {
   sender: "patient" | "system" | "support" | "ai";
   text: string;
   timestamp: number;
+  mediaUrl?: string;
 }
 
 export interface SystemStats {
@@ -145,7 +151,15 @@ export function useAllPatients() {
           }
         }
 
-        setData(Array.from(emailMap.values()));
+        // Sort by activity: most recently active patients first
+        const deduped = Array.from(emailMap.values());
+        deduped.sort((a, b) => {
+          const aTime = a.lastActive || (a.lastVitals?.updatedAt as number) || 0;
+          const bTime = b.lastActive || (b.lastVitals?.updatedAt as number) || 0;
+          return bTime - aTime; // descending — newest first
+        });
+
+        setData(deduped);
         setLoading(false);
       },
       (err) => {
@@ -377,6 +391,8 @@ export function useUserProfile(userId: string) {
 export function useSystemStats() {
   const { data: patients } = useAllPatients();
   const { data: activeAlerts } = useActiveAlerts();
+  const patientIds = patients.map(p => p.userId as string);
+  const { data: ecgMap } = useLatestECGPerPatient(patientIds);
 
   const totalPatients = patients.length;
   const numActiveAlerts = activeAlerts.length;
@@ -384,11 +400,23 @@ export function useSystemStats() {
     (a) => a.createdAt > Date.now() - 86400000 && a.type === "cardiac",
   ).length;
 
+  // Compute real average BPM from latest patient ECG readings
+  let avgBpm = 72; // fallback
+  const bpmValues: number[] = [];
+  ecgMap.forEach((readings) => {
+    if (readings.length > 0) {
+      bpmValues.push(readings[readings.length - 1].bpm);
+    }
+  });
+  if (bpmValues.length > 0) {
+    avgBpm = Math.round(bpmValues.reduce((a, b) => a + b, 0) / bpmValues.length);
+  }
+
   return {
     data: {
       totalPatients,
       activeAlerts: numActiveAlerts,
-      avgBpm: 72,
+      avgBpm,
       criticalToday,
     },
     loading: false,

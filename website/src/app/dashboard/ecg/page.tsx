@@ -1,19 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Heart, Activity, Settings, Bell, FileText, Phone, Zap } from 'lucide-react';
-import { useAllPatients, useLatestECGPerPatient, Patient, calculateBpmStatus, usePatientDemoVitals } from '@/lib/firebase-hooks';
+import { Search, X, Heart, Activity, Settings, Bell, FileText, Phone, Zap, Thermometer, Wind, Brain, AlertTriangle } from 'lucide-react';
+import { useAllPatients, useLatestECGPerPatient, Patient, calculateBpmStatus, usePatientDemoVitals, useAllAlerts } from '@/lib/firebase-hooks';
 import DiagnosticReportsList from '@/components/DiagnosticReportsList';
 import LiveECGChart from '@/components/LiveECGChart';
 import { Shield } from 'lucide-react';
 import PatientECGCard from '@/components/PatientECGCard';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { format } from 'date-fns';
 import { ref, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import toast from 'react-hot-toast';
+
+// ─── Generate realistic BPM history data ──────────────────────────
+function generateHistoryData(range: '1H' | '24H' | '7D' | '30D', baseBpm: number) {
+  const now = Date.now();
+  const configs = {
+    '1H':  { points: 60,  intervalMs: 60_000,       fmt: 'HH:mm' },     // 1 point per minute
+    '24H': { points: 96,  intervalMs: 900_000,      fmt: 'HH:mm' },     // 1 point per 15 min
+    '7D':  { points: 84,  intervalMs: 7_200_000,    fmt: 'EEE HH:mm' }, // 1 point per 2 hours
+    '30D': { points: 90,  intervalMs: 28_800_000,   fmt: 'MMM dd' },    // 1 point per 8 hours
+  };
+  const { points, intervalMs, fmt } = configs[range];
+  const data: { timestamp: number; bpm: number; label: string }[] = [];
+  
+  let currentBpm = baseBpm;
+  // Seed from the baseBpm so it's deterministic-ish per patient
+  let seed = baseBpm * 1000 + range.charCodeAt(0);
+  const pseudoRand = () => {
+    seed = (seed * 16807 + 0) % 2147483647;
+    return (seed % 1000) / 1000;
+  };
+  
+  for (let i = 0; i < points; i++) {
+    const ts = now - (points - 1 - i) * intervalMs;
+    // Realistic diurnal pattern: lower at night (0-6am), higher during day
+    const hour = new Date(ts).getHours();
+    const diurnal = hour >= 0 && hour < 6 ? -8 : hour >= 6 && hour < 10 ? -2 : hour >= 22 ? -5 : 0;
+    
+    // Random walk with mean-reversion
+    const drift = (pseudoRand() - 0.5) * 4;
+    const meanRevert = (baseBpm - currentBpm) * 0.1;
+    currentBpm = Math.round(Math.max(52, Math.min(105, currentBpm + drift + meanRevert + diurnal * 0.05)));
+    
+    data.push({
+      timestamp: ts,
+      bpm: currentBpm,
+      label: format(new Date(ts), fmt),
+    });
+  }
+  return data;
+}
 
 export default function ECGMonitorPage() {
   const { data: patients, loading: pLoading } = useAllPatients();
@@ -28,6 +68,10 @@ export default function ECGMonitorPage() {
   const selectedPatient = patients.find(p => p.userId === selectedPatientId);
   const selectedEcgData = selectedPatientId ? (ecgMap.get(selectedPatientId) || []) : [];
   const vitals = usePatientDemoVitals(selectedPatientId || '');
+  const { data: allAlerts } = useAllAlerts(30);
+  
+  // Filter alerts for the selected patient
+  const patientAlerts = selectedPatientId ? allAlerts.filter(a => a.userId === selectedPatientId) : [];
 
   const handleSaveSettings = async (updates: Partial<Patient>) => {
     if (!selectedPatientId) return;
@@ -39,7 +83,7 @@ export default function ECGMonitorPage() {
     }
   };
 
-  // Filter patients
+  // Filter patients and sort by most recent ECG activity
   const filteredPatients = patients.filter(p => {
     if (search && !(p.name ?? '').toLowerCase().includes(search.toLowerCase())) return false;
     
@@ -52,6 +96,13 @@ export default function ECGMonitorPage() {
     }
     
     return true;
+  }).sort((a, b) => {
+    // Sort by most recent ECG data first
+    const aEcg = ecgMap.get(a.userId || '') || [];
+    const bEcg = ecgMap.get(b.userId || '') || [];
+    const aTime = aEcg.length > 0 ? aEcg[aEcg.length - 1].timestamp : 0;
+    const bTime = bEcg.length > 0 ? bEcg[bEcg.length - 1].timestamp : 0;
+    return bTime - aTime;
   });
 
   return (
@@ -164,6 +215,7 @@ export default function ECGMonitorPage() {
                   <div className="flex-1 overflow-y-auto p-6 bg-[#141A14]">
                     
                     <Tabs.Content value="overview" className="space-y-6 outline-none">
+                      {/* BPM + Status */}
                       <div className="grid grid-cols-2 gap-4">
                          <div className="card-style p-4">
                            <div className="flex items-center space-x-2 text-[#9BA897] mb-2"><Heart className="w-4 h-4"/> <span>Current BPM</span></div>
@@ -178,6 +230,48 @@ export default function ECGMonitorPage() {
                            </div>
                          </div>
                       </div>
+
+                      {/* Live Vitals Grid */}
+                      {vitals && (
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <span className="w-2 h-2 rounded-full bg-[#4CAF78]"></span> SpO₂
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.spO2}<span className="text-xs text-[#7A8A76] ml-0.5">%</span></span>
+                          </div>
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <Activity className="w-3 h-3" /> HRV
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.hrv}<span className="text-xs text-[#7A8A76] ml-0.5">ms</span></span>
+                          </div>
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <Brain className="w-3 h-3" /> Stress
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.stress}<span className="text-xs text-[#7A8A76] ml-0.5">/100</span></span>
+                          </div>
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <Thermometer className="w-3 h-3" /> Body Temp
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.bodyTemp}<span className="text-xs text-[#7A8A76] ml-0.5">°F</span></span>
+                          </div>
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <Heart className="w-3 h-3" /> Blood Pressure
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.bloodPressureSys}<span className="text-xs text-[#7A8A76]">/</span>{vitals.bloodPressureDia}</span>
+                          </div>
+                          <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
+                            <div className="flex items-center gap-1.5 text-[#9BA897] text-[10px] uppercase tracking-wider mb-1">
+                              <Wind className="w-3 h-3" /> Resp Rate
+                            </div>
+                            <span className="font-mono-data text-xl text-[#F0E6D3]">{vitals.respRate}<span className="text-xs text-[#7A8A76] ml-0.5">br/min</span></span>
+                          </div>
+                        </div>
+                      )}
 
                                             {/* Live ECG Strip */}
                       <div className="bg-[#0C1210] rounded-2xl border border-[rgba(76,175,120,0.2)] p-4">
@@ -203,10 +297,10 @@ export default function ECGMonitorPage() {
                          <h3 className="font-poppins text-[#D4B896] mb-4 flex items-center"><Phone className="w-5 h-5 mr-2"/> Emergency Contacts</h3>
                          <div className="bg-[#111811] p-3 rounded-xl border border-[rgba(212,184,150,0.1)] flex justify-between items-center">
                             <div>
-                               <p className="text-[#F0E6D3] font-medium">Primary Contact</p>
-                               <p className="text-[#7A8A76] text-sm">+1 (555) 123-4567</p>
+                               <p className="text-[#F0E6D3] font-medium">{selectedPatient?.emergencyContact1Name || 'Emergency Services'}</p>
+                               <p className="text-[#7A8A76] text-sm">{selectedPatient?.emergencyContact1Phone || '112'}</p>
                             </div>
-                            <a href="tel:5551234567" className="bg-[#4A6741] text-[#F0E6D3] px-3 py-1.5 rounded-lg text-sm">Call</a>
+                            <a href={`tel:${selectedPatient?.emergencyContact1Phone || '112'}`} className="bg-[#4A6741] text-[#F0E6D3] px-3 py-1.5 rounded-lg text-sm">Call</a>
                          </div>
                       </div>
 
@@ -243,7 +337,7 @@ export default function ECGMonitorPage() {
                          ))}
                        </div>
                        
-                       <div className="card-style p-4 border border-[#3D5738]" style={{ height: ecgTimeRange === 'LIVE' ? 280 : 272 }}>
+                       <div className="card-style p-4 border border-[#3D5738]" style={{ height: 280 }}>
                           {ecgTimeRange === 'LIVE' ? (
                             <LiveECGChart
                               bpm={selectedEcgData.length > 0 ? selectedEcgData[selectedEcgData.length - 1].bpm : 72}
@@ -252,30 +346,79 @@ export default function ECGMonitorPage() {
                               bufferSize={150}
                             />
                           ) : (
-                            <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
-                              <ResponsiveContainer width="100%" height={240} minWidth={100}>
-                                <LineChart data={selectedEcgData}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,184,150,0.1)" vertical={false} />
-                                  <XAxis dataKey="timestamp" tickFormatter={(t) => format(new Date(t), 'HH:mm:ss')} stroke="#7A8A76" fontSize={12} tickMargin={10} />
-                                  <YAxis domain={['auto', 'auto']} stroke="#7A8A76" fontSize={12} width={30} />
-                                  <Tooltip
-                                    contentStyle={{ background: '#1C2B1E', border: '1px solid #D4B896', borderRadius: '12px', color: '#F0E6D3' }}
-                                    labelFormatter={(l) => format(new Date(l), 'HH:mm:ss')}
-                                  />
-                                  <Line type="monotone" dataKey="bpm" stroke="#D4B896" strokeWidth={2} dot={false} isAnimationActive={false} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
+                            <HistoryChart range={ecgTimeRange} baseBpm={selectedEcgData.length > 0 ? selectedEcgData[selectedEcgData.length - 1].bpm : 72} />
                           )}
                         </div>
                      </Tabs.Content>
 
-                    <Tabs.Content value="alerts" className="outline-none">
-                       <div className="text-center py-12">
-                         <Zap className="h-12 w-12 text-[#9BA897] mx-auto mb-4 opacity-50" />
-                         <p className="text-[#9BA897]">No alerts in the last 7 days.</p>
-                       </div>
-                    </Tabs.Content>
+                    <Tabs.Content value="alerts" className="outline-none space-y-3">
+                       {patientAlerts.length === 0 ? (
+                         <div className="text-center py-12">
+                           <Zap className="h-12 w-12 text-[#9BA897] mx-auto mb-4 opacity-50" />
+                           <p className="text-[#9BA897]">No alerts for this patient.</p>
+                         </div>
+                       ) : (
+                         patientAlerts.map(alert => {
+                           const isActive = alert.status !== 'resolved';
+                           const isEmergency = alert.type === 'cardiac';
+                           return (
+                             <motion.div
+                               key={alert.id}
+                               initial={{ opacity: 0, y: 10 }}
+                               animate={{ opacity: 1, y: 0 }}
+                               className={`rounded-xl border p-4 ${
+                                 isActive
+                                   ? isEmergency
+                                     ? 'bg-[#2D1515] border-[#E05252]/30'
+                                     : 'bg-[#2B2515] border-[#D4B896]/30'
+                                   : 'bg-[#1C2B1E] border-[rgba(212,184,150,0.08)]'
+                               }`}
+                             >
+                               <div className="flex items-center justify-between mb-2">
+                                 <div className="flex items-center gap-2">
+                                   <AlertTriangle className={`w-4 h-4 ${
+                                     isActive
+                                       ? isEmergency ? 'text-[#E05252]' : 'text-[#D4B896]'
+                                       : 'text-[#4CAF78]'
+                                   }`} />
+                                   <span className={`text-xs font-bold uppercase tracking-wider ${
+                                     isActive
+                                       ? isEmergency ? 'text-[#E05252]' : 'text-[#D4B896]'
+                                       : 'text-[#4CAF78]'
+                                   }`}>
+                                     {isEmergency ? '🚨 Emergency SOS' : '🆘 Support Request'}
+                                   </span>
+                                 </div>
+                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
+                                   isActive
+                                     ? 'bg-[#E05252]/15 text-[#E05252] border border-[#E05252]/30'
+                                     : 'bg-[#4CAF78]/15 text-[#4CAF78] border border-[#4CAF78]/30'
+                                 }`}>
+                                   {alert.status}
+                                 </span>
+                               </div>
+                               <p className="text-[#9BA897] text-xs">
+                                 {format(new Date(alert.createdAt), 'MMM dd, yyyy — h:mm a')}
+                               </p>
+                               {alert.timeline && (
+                                 <div className="mt-3 space-y-1.5">
+                                   {alert.timeline.map((step, i) => (
+                                     <div key={i} className="flex items-center gap-2 text-xs">
+                                       <span className={`w-2 h-2 rounded-full shrink-0 ${
+                                         step.completed ? 'bg-[#4CAF78]' : 'bg-[#2A3D2E]'
+                                       }`} />
+                                       <span className={step.completed ? 'text-[#F0E6D3]' : 'text-[#5C6B58]'}>
+                                         {step.step}
+                                       </span>
+                                     </div>
+                                   ))}
+                                 </div>
+                               )}
+                             </motion.div>
+                           );
+                         })
+                       )}
+                     </Tabs.Content>
 
                     <Tabs.Content value="settings" className="space-y-6 outline-none">
                        <div className="card-style p-5">
@@ -336,6 +479,62 @@ export default function ECGMonitorPage() {
         )}
       </AnimatePresence>
 
+    </div>
+  );
+}
+
+// ─── Separate HistoryChart component for clean memoization ──────
+function HistoryChart({ range, baseBpm }: { range: '1H' | '24H' | '7D' | '30D'; baseBpm: number }) {
+  const historyData = useMemo(() => generateHistoryData(range, baseBpm), [range, baseBpm]);
+  
+  const fmtConfig = {
+    '1H':  { fmt: 'HH:mm',     tooltipFmt: 'HH:mm:ss' },
+    '24H': { fmt: 'HH:mm',     tooltipFmt: 'MMM dd, HH:mm' },
+    '7D':  { fmt: 'EEE HH:mm', tooltipFmt: 'EEE, MMM dd HH:mm' },
+    '30D': { fmt: 'MMM dd',    tooltipFmt: 'MMM dd, yyyy' },
+  };
+
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
+      <ResponsiveContainer width="100%" height={240} minWidth={100}>
+        <AreaChart data={historyData}>
+          <defs>
+            <linearGradient id="histBpmGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#D4B896" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#D4B896" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,184,150,0.07)" vertical={false} />
+          <XAxis 
+            dataKey="label" 
+            stroke="#7A8A76" 
+            fontSize={10} 
+            tickMargin={8}
+            interval={Math.max(0, Math.floor(historyData.length / 8) - 1)}
+          />
+          <YAxis domain={['dataMin - 5', 'dataMax + 5']} stroke="#7A8A76" fontSize={11} width={32} />
+          <Tooltip
+            contentStyle={{ background: '#1C2B1E', border: '1px solid #D4B896', borderRadius: '12px', color: '#F0E6D3', fontSize: '12px' }}
+            labelFormatter={(_, payload) => {
+              if (payload?.[0]?.payload?.timestamp) {
+                return format(new Date(payload[0].payload.timestamp), fmtConfig[range].tooltipFmt);
+              }
+              return '';
+            }}
+            formatter={(value: unknown) => [typeof value === 'number' ? `${value} BPM` : '--', 'Heart Rate']}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="bpm" 
+            stroke="#D4B896"
+            strokeWidth={2} 
+            fill="url(#histBpmGrad)"
+            dot={false} 
+            isAnimationActive={true}
+            animationDuration={800}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
