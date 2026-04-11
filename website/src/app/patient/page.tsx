@@ -130,13 +130,18 @@ export default function PatientDashboard() {
     // Start seeding demo ECG data to Firebase
     startDemoDataSeeder(user.id);
     
-    // Seed initial vitals snapshot
-    seedDemoVitals(user.id);
+    // Seed initial vitals snapshot + profile info (fixes "Unknown" name)
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    seedDemoVitals(user.id, {
+      name: fullName || undefined,
+      email: user.primaryEmailAddress?.emailAddress || undefined,
+      avatarUrl: user.imageUrl || undefined,
+    });
 
     return () => {
       stopDemoDataSeeder();
     };
-  }, [user?.id]);
+  }, [user?.id, user?.firstName, user?.lastName]);
 
   // ─── Sync vitals to Firebase periodically (every 5s) ───
   useEffect(() => {

@@ -221,19 +221,32 @@ export async function createEmergencyAlert(userId: string) {
 /**
  * Seeds initial demo vital data into the user's Firebase node
  * so admin Patients page shows vitals immediately.
- * Uses per-patient unique baselines.
+ * Also syncs the user's profile (name, email) from Clerk to Firebase
+ * to fix "Unknown" name issues.
  */
-export async function seedDemoVitals(userId: string) {
+export async function seedDemoVitals(
+  userId: string,
+  profile?: { name?: string; email?: string; avatarUrl?: string }
+) {
   try {
     const baseline = generatePatientBaseline(userId);
-    await update(ref(db, `users/${userId}`), {
+    const profileData: Record<string, unknown> = {
+      role: 'patient',
       mode: 'normal',
       lastActive: Date.now(),
+      emergencyContact: '112',
       lastVitals: {
         ...baseline,
         updatedAt: Date.now(),
       },
-    });
+    };
+
+    // Only write profile fields if they're non-empty
+    if (profile?.name) profileData.name = profile.name;
+    if (profile?.email) profileData.email = profile.email;
+    if (profile?.avatarUrl) profileData.avatarUrl = profile.avatarUrl;
+
+    await update(ref(db, `users/${userId}`), profileData);
   } catch (err) {
     console.error('Failed to seed demo vitals:', err);
   }
