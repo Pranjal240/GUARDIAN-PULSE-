@@ -416,6 +416,13 @@ export default function SupportChatPage() {
               </div>
             </div>
 
+            {/* SOS Camera Feed — shown prominently above messages */}
+            {activePatientId && (
+              <div className="shrink-0 px-4 py-2 bg-[#111811] border-b border-[rgba(212,184,150,0.06)]">
+                <SOSCameraViewer userId={activePatientId} />
+              </div>
+            )}
+
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4">
                {messages.length === 0 ? (
@@ -522,13 +529,6 @@ export default function SupportChatPage() {
                )}
                <div ref={messagesEndRef} />
             </div>
-
-            {/* SOS Camera Viewer */}
-            {activePatientId && (
-              <div className="px-4 pb-2">
-                <SOSCameraViewer userId={activePatientId} />
-              </div>
-            )}
 
             {/* Input Area */}
             <div className="p-3 md:p-4 bg-[#1C2B1E] border-t border-[rgba(212,184,150,0.1)]">
