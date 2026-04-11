@@ -30,7 +30,7 @@ export default function SOSCamera({ userId, isActive, onClose }: SOSCameraProps)
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
   // Stable capture function that reads from refs directly
-  const captureAndSend = useCallback(() => {
+  const captureAndSend = useCallback(async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const uid = userIdRef.current;
@@ -39,21 +39,22 @@ export default function SOSCamera({ userId, isActive, onClose }: SOSCameraProps)
     if (video.readyState < 2 || video.videoWidth === 0) return;
 
     try {
-      canvas.width = 320;
-      canvas.height = 240;
+      // Smaller frame = faster Firebase sync
+      canvas.width = 240;
+      canvas.height = 180;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.drawImage(video, 0, 0, 320, 240);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      ctx.drawImage(video, 0, 0, 240, 180);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.35);
 
-      // Write frame data to Firebase
-      update(ref(db, `users/${uid}/sosCamera`), {
+      // Write frame data to Firebase — AWAIT to catch errors
+      await update(ref(db, `users/${uid}/sosCamera`), {
         frame: dataUrl,
         updatedAt: Date.now(),
         active: true,
       });
     } catch (err) {
-      console.warn('SOS Camera capture failed:', err);
+      console.error('SOS Camera capture/upload failed:', err);
     }
   }, []);
 

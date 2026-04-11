@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useAllPatients, useChatMessages, ChatMessage } from '@/lib/firebase-hooks';
+import { useAllPatients, ChatMessage } from '@/lib/firebase-hooks';
 import { Search, Phone, MessageSquare, CheckCircle, Clock, Zap, Send, Info, ArrowLeft, LifeBuoy, X, MapPin, Trash2, ImagePlus, ZoomIn } from 'lucide-react';
 import { ref, push, update, onValue, query, orderByChild, equalTo, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
@@ -27,63 +27,29 @@ function usePatientLocation(userId: string) {
   return loc;
 }
 
-// Hook: Get the latest chat message for each patient to show preview
-// Uses refs for stable listener tracking to avoid teardown on every rerender
-function useAllChatSummaries(patientIds: string[]) {
-  const [summaries, setSummaries] = useState<Map<string, { lastMsg: string; lastTime: number; count: number }>>(new Map());
-  const listenersRef = useRef<Map<string, () => void>>(new Map());
-  const mapRef = useRef<Map<string, { lastMsg: string; lastTime: number; count: number }>>(new Map());
-
-  // Sort IDs to create a STABLE dependency key regardless of patient list order
-  const stableKey = useMemo(() => [...patientIds].sort().join(','), [patientIds]);
+// ══════════════════════════════════════════════════════════════════════════════
+// SINGLE consolidated chat listener — replaces duplicate per-patient listeners.
+// One onValue on "chat_messages" → derive summaries + active messages from it.
+// ══════════════════════════════════════════════════════════════════════════════
+function useAllChats() {
+  const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!stableKey) return;
-    const currentIds = new Set(patientIds);
-    const existingIds = new Set(listenersRef.current.keys());
-
-    // Subscribe to NEW patient IDs that don't have a listener yet
-    for (const id of currentIds) {
-      if (existingIds.has(id)) continue; // already listening
-      const q = query(ref(db, 'chat_messages'), orderByChild('userId'), equalTo(id));
-      const unsub = onValue(q, (snap) => {
-        if (!snap.exists()) {
-          mapRef.current.delete(id);
-        } else {
-          const msgs: ChatMessage[] = [];
-          snap.forEach(child => {
-            msgs.push({ id: child.key || '', ...child.val() });
-          });
-          msgs.sort((a, b) => a.timestamp - b.timestamp);
-          const lastMsg = msgs[msgs.length - 1];
-          mapRef.current.set(id, {
-            lastMsg: lastMsg?.text || '',
-            lastTime: lastMsg?.timestamp || 0,
-            count: msgs.filter(m => m.sender === 'patient').length,
-          });
-        }
-        setSummaries(new Map(mapRef.current));
+    const chatRef = ref(db, 'chat_messages');
+    const unsub = onValue(chatRef, (snapshot) => {
+      const msgs: ChatMessage[] = [];
+      snapshot.forEach((child) => {
+        msgs.push({ id: child.key || '', ...child.val() });
       });
-      listenersRef.current.set(id, unsub);
-    }
+      msgs.sort((a, b) => a.timestamp - b.timestamp);
+      setAllMessages(msgs);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
 
-    // Unsubscribe from patients that are no longer in the list
-    for (const id of existingIds) {
-      if (currentIds.has(id)) continue;
-      listenersRef.current.get(id)?.();
-      listenersRef.current.delete(id);
-      mapRef.current.delete(id);
-    }
-
-    return () => {
-      // Cleanup all on unmount
-      listenersRef.current.forEach(unsub => unsub());
-      listenersRef.current.clear();
-      mapRef.current.clear();
-    };
-  }, [stableKey]);
-
-  return summaries;
+  return { allMessages, loading };
 }
 
 export default function SupportChatPage() {
@@ -94,16 +60,44 @@ export default function SupportChatPage() {
   const [activePatientId, setActivePatientId] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
   
-  const { data: messages } = useChatMessages(activePatientId || '');
+  // ── SINGLE source of truth for ALL chat messages ──
+  const { allMessages } = useAllChats();
+
+  // Derive active patient's messages from the consolidated list
+  const messages = useMemo(() => {
+    if (!activePatientId) return [];
+    return allMessages.filter(m => m.userId === activePatientId);
+  }, [allMessages, activePatientId]);
+
+  // Derive chat summaries for sidebar from the same consolidated list
+  const chatSummaries = useMemo(() => {
+    const map = new Map<string, { lastMsg: string; lastTime: number; count: number }>();
+    for (const msg of allMessages) {
+      const uid = msg.userId;
+      if (!uid) continue;
+      const existing = map.get(uid);
+      if (!existing) {
+        map.set(uid, {
+          lastMsg: msg.text || '',
+          lastTime: msg.timestamp || 0,
+          count: msg.sender === 'patient' ? 1 : 0,
+        });
+      } else {
+        // Since allMessages is sorted ascending, the last msg for each user
+        // will always be the latest one we encounter
+        existing.lastMsg = msg.text || '';
+        existing.lastTime = msg.timestamp || 0;
+        if (msg.sender === 'patient') existing.count += 1;
+      }
+    }
+    return map;
+  }, [allMessages]);
+
   const patientLocation = usePatientLocation(activePatientId || '');
   const [inputValue, setInputValue] = useState('');
   
   const messagesEndRef = useRef<HTMLInputElement>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-
-  // Sort IDs so the array order doesn't change when patients re-sort by lastActive
-  const patientIds = useMemo(() => patients.map(p => p.userId || '').filter(Boolean).sort(), [patients]);
-  const chatSummaries = useAllChatSummaries(patientIds);
 
   // Scroll to bottom when messages update
   useEffect(() => {
