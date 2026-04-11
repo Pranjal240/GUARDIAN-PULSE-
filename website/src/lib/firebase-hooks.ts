@@ -123,9 +123,10 @@ export function useAllPatients() {
         });
 
         // ── Deduplicate by email ──────────────────────────────────────
-        // If multiple Firebase nodes share the same email (e.g., leftover
-        // test entries), keep only the most "complete" one: the one with
-        // the most non-null fields, breaking ties by createdAt (newest).
+        // If multiple Firebase nodes share the same email (e.g., when a
+        // user's Clerk ID changes), keep the MOST RECENTLY ACTIVE one.
+        // This ensures the admin's activePatientId matches the userId
+        // the patient is currently writing chat messages with.
         const emailMap = new Map<string, Patient>();
         for (const p of patients) {
           if (!p.userId) continue;
@@ -141,12 +142,11 @@ export function useAllPatients() {
           if (!existing) {
             emailMap.set(email, p);
           } else {
-            // Score = number of truthy fields (more data = better record)
-            const score = (x: Patient) => Object.values(x).filter(Boolean).length;
-            const existingCreated = (existing as Record<string, unknown>).createdAt as number || 0;
-            const newCreated = (p as Record<string, unknown>).createdAt as number || 0;
+            // PRIMARY: prefer the most recently active user
+            const existingActive = existing.lastActive || (existing.lastVitals?.updatedAt as number) || 0;
+            const newActive = p.lastActive || (p.lastVitals?.updatedAt as number) || 0;
 
-            if (score(p) > score(existing) || (score(p) === score(existing) && newCreated > existingCreated)) {
+            if (newActive > existingActive) {
               emailMap.set(email, p);
             }
           }
