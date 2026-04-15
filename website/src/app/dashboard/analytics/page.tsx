@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 
 const container = {
   hidden: { opacity: 0 },
-  show: { transition: { staggerChildren: 0.08 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 const item = {
   hidden: { opacity: 0, y: 20 },
@@ -150,7 +150,9 @@ export default function AnalyticsPage() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7A8A76', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1C2B1E', border: '1px solid rgba(212,184,150,0.2)', borderRadius: '12px', color: '#F0E6D3' }}
-                    itemStyle={{ fontFamily: 'JetBrains Mono' }}
+                    itemStyle={{ fontFamily: 'JetBrains Mono', color: '#F0E6D3' }}
+                    labelStyle={{ color: '#D4B896', fontWeight: 'bold' }}
+                    cursor={{ stroke: 'rgba(212,184,150,0.1)', strokeWidth: 1, fill: 'rgba(212,184,150,0.05)' }}
                   />
                   <Area type="monotone" dataKey="patients" stroke="#D4B896" fill="url(#patientFill)" strokeWidth={2} />
                   <Area type="monotone" dataKey="alerts" stroke="#E05252" fill="url(#alertFill)" strokeWidth={2} />
@@ -216,7 +218,9 @@ export default function AnalyticsPage() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7A8A76', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1C2B1E', border: '1px solid rgba(212,184,150,0.2)', borderRadius: '12px', color: '#F0E6D3' }}
-                    itemStyle={{ fontFamily: 'JetBrains Mono' }}
+                    itemStyle={{ fontFamily: 'JetBrains Mono', color: '#F0E6D3' }}
+                    labelStyle={{ color: '#D4B896', fontWeight: 'bold' }}
+                    cursor={{ fill: 'rgba(212,184,150,0.05)' }}
                   />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={36}>
                     {bpmDistribution.map((entry, index) => (
@@ -243,7 +247,9 @@ export default function AnalyticsPage() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7A8A76', fontSize: 11 }} unit="m" />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1C2B1E', border: '1px solid rgba(212,184,150,0.2)', borderRadius: '12px', color: '#F0E6D3' }}
-                    itemStyle={{ fontFamily: 'JetBrains Mono' }}
+                    itemStyle={{ fontFamily: 'JetBrains Mono', color: '#F0E6D3' }}
+                    labelStyle={{ color: '#D4B896', fontWeight: 'bold' }}
+                    cursor={{ stroke: 'rgba(212,184,150,0.1)', strokeWidth: 1, fill: 'transparent' }}
                     formatter={(val: any) => [`${val} min`, 'Avg Response']}
                   />
                   <Line type="monotone" dataKey="avgMins" stroke="#D4943A" strokeWidth={3} dot={{ fill: '#D4943A', r: 4 }} activeDot={{ r: 6, stroke: '#D4943A', strokeWidth: 2, fill: '#1C2B1E' }} />

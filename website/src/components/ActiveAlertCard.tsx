@@ -75,7 +75,14 @@ export default function ActiveAlertCard({ alert, patient }: Props) {
                 <p className="font-poppins font-semibold text-[#F0E6D3]">
                   {patient?.name || 'Unknown'}
                 </p>
-                <p className="text-[#7A8A76] text-xs uppercase tracking-widest">{patient?.phone || 'No phone record'}</p>
+                <p className={`text-xs uppercase tracking-widest ${patient?.phone ? 'text-[#4CAF78]' : 'text-[#E05252]'}`}>
+                  {patient?.phone ? (
+                    <a href={`tel:${patient.phone}`} className="flex items-center gap-1.5 hover:underline">
+                      <Phone className="w-3 h-3" />
+                      {patient.phone}
+                    </a>
+                  ) : 'NO PHONE RECORD'}
+                </p>
               </div>
             </div>
           </div>

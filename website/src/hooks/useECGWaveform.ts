@@ -64,7 +64,40 @@ class ECGWaveformStore {
     this.bpm = bpm;
     this.bufferSize = bufferSize;
     this.targetFps = targetFps;
-    this.buffer = Array.from({ length: bufferSize }, (_, i) => ({ time: i, voltage: 0 }));
+    this.targetFps = targetFps;
+    
+    // Simulate past frames so it doesn't start from a flatline
+    this.buffer = Array.from({ length: bufferSize }, (_, i) => {
+      // Very basic initialization, but wait, we can just run the loop logic
+      return { time: Date.now() - (bufferSize - i) * (1000 / targetFps), voltage: 0 };
+    });
+    
+    // Pre-fill with realistic waveform
+    for (let i = 0; i < bufferSize; i++) {
+        const intervalMs = 1000 / this.targetFps;
+        const phaseIncrement = (this.bpm / 60000) * intervalMs;
+        this.phase = (this.phase + phaseIncrement) % 1.0;
+        
+        let v = 0;
+        const phase = this.phase;
+  
+        if (phase > 0.1 && phase < 0.2) v += Math.sin(((phase - 0.1) / 0.1) * Math.PI) * 0.25;
+        else if (phase > 0.22 && phase < 0.24) v += -Math.sin(((phase - 0.22) / 0.02) * Math.PI) * 0.2;
+        else if (phase >= 0.24 && phase < 0.28) {
+          if (phase < 0.26) v += ((phase - 0.24) / 0.02) * 2.5;
+          else v += (1 - (phase - 0.26) / 0.02) * 2.5;
+        } else if (phase >= 0.28 && phase < 0.32) {
+          if (phase < 0.30) v += -((phase - 0.28) / 0.02) * 0.6;
+          else v += -(1 - (phase - 0.30) / 0.02) * 0.6;
+        } else if (phase > 0.45 && phase < 0.65) {
+          v += Math.sin(((phase - 0.45) / 0.2) * Math.PI) * 0.4;
+        }
+  
+        v += (Math.random() - 0.5) * 0.06;
+        
+        this.buffer[i].voltage = v;
+    }
+    
     this.snapshot = [...this.buffer];
   }
 

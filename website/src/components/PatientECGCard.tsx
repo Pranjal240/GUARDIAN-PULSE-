@@ -8,19 +8,21 @@ interface Props {
   patient: Patient;
   ecgData: EcgReading[];
   onClick: () => void;
+  monitorDisabled?: boolean;
 }
 
-export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
+export default function PatientECGCard({ patient, ecgData, onClick, monitorDisabled }: Props) {
+  const isDisabled = monitorDisabled === true;
   const latest = ecgData.length > 0 ? ecgData[ecgData.length - 1] : null;
-  const currentBpm = latest?.bpm || 0;
+  const currentBpm = isDisabled ? 0 : (latest?.bpm || 0);
   
-  const status = currentBpm > 0 ? calculateBpmStatus(currentBpm) : 'offline';
+  const status = isDisabled ? 'disabled' : currentBpm > 0 ? calculateBpmStatus(currentBpm) : 'offline';
   const isCritical = status === 'critical';
   const isWarning = status === 'warning';
   const isOffline = status === 'offline';
   
   // Colors
-  const sColor = isOffline ? '#6B7F67' : isCritical ? '#E05252' : isWarning ? '#D4943A' : '#4CAF78';
+  const sColor = isDisabled ? '#E05252' : isOffline ? '#6B7F67' : isCritical ? '#E05252' : isWarning ? '#D4943A' : '#4CAF78';
   
   const hrv = ecgData.length > 0 ? Math.round(calculateHRV(ecgData.map(d => d.rrIntervals?.[d.rrIntervals.length - 1] || 800))) : '--';
   const updatedAgo = latest ? Math.round((Date.now() - latest.timestamp) / 1000) : '--';
@@ -31,6 +33,7 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
       whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.7)' }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`card-style p-4 cursor-pointer relative overflow-hidden ${
+        isDisabled ? 'opacity-70 border-[#E05252]/30' :
         isCritical ? 'animate-critical border-[#E05252]' : ''
       }`}
     >
@@ -49,35 +52,47 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
         </div>
 
         <div className={`px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-widest border ${
-          isCritical 
-            ? 'bg-[rgba(224,82,82,0.15)] text-[#E05252] border-[rgba(224,82,82,0.3)] animate-pulse'
-            : isWarning
-              ? 'bg-[rgba(212,148,58,0.15)] text-[#D4943A] border-[rgba(212,148,58,0.3)]'
-              : isOffline
-                ? 'bg-[rgba(107,127,103,0.15)] text-[#6B7F67] border-[rgba(107,127,103,0.3)]'
-                : 'bg-[rgba(76,175,120,0.15)] text-[#4CAF78] border-[rgba(76,175,120,0.3)]'
+          isDisabled
+            ? 'bg-[rgba(224,82,82,0.15)] text-[#E05252] border-[rgba(224,82,82,0.3)]'
+            : isCritical 
+              ? 'bg-[rgba(224,82,82,0.15)] text-[#E05252] border-[rgba(224,82,82,0.3)] animate-pulse'
+              : isWarning
+                ? 'bg-[rgba(212,148,58,0.15)] text-[#D4943A] border-[rgba(212,148,58,0.3)]'
+                : isOffline
+                  ? 'bg-[rgba(107,127,103,0.15)] text-[#6B7F67] border-[rgba(107,127,103,0.3)]'
+                  : 'bg-[rgba(76,175,120,0.15)] text-[#4CAF78] border-[rgba(76,175,120,0.3)]'
         }`}>
-          {status}
+          {isDisabled ? 'disabled' : status}
         </div>
       </div>
 
       {/* CHART (h=80px) */}
-      <div className={`h-20 w-full mb-4 rounded-xl overflow-hidden ${isCritical ? 'shadow-[0_0_16px_rgba(224,82,82,0.25)]' : ''}`}>
-        <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
-        <ResponsiveContainer width="100%" height={80} minWidth={100}>
-          <LineChart data={ecgData.slice(-40)} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
-            <Line 
-              type="monotone" 
-              dataKey="bpm" 
-              stroke={sColor} 
-              strokeWidth={2} 
-              dot={false}
-              isAnimationActive={true}
-              animationDuration={800}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-        </div>
+      <div className={`h-20 w-full mb-4 rounded-xl overflow-hidden ${isDisabled ? '' : isCritical ? 'shadow-[0_0_16px_rgba(224,82,82,0.25)]' : ''}`}>
+        {isDisabled ? (
+          /* Flatline for disabled monitors */
+          <div className="w-full h-full flex items-center justify-center bg-[#1C1515] rounded-xl relative">
+            <svg viewBox="0 0 400 80" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
+              <line x1="0" y1="40" x2="400" y2="40" stroke="#E05252" strokeWidth="2" opacity="0.4" />
+            </svg>
+            <span className="text-[#E05252] text-[9px] font-mono uppercase tracking-[0.2em] relative z-10 bg-[#1C1515] px-2">Flatline</span>
+          </div>
+        ) : (
+          <div style={{ width: '100%', height: '100%', minHeight: '80px', minWidth: '100px' }}>
+          <ResponsiveContainer width="100%" height={80} minWidth={100}>
+            <LineChart data={ecgData.slice(-40)} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
+              <Line 
+                type="monotone" 
+                dataKey="bpm" 
+                stroke={sColor} 
+                strokeWidth={2} 
+                dot={false}
+                isAnimationActive={true}
+                animationDuration={800}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Bottom Row */}
@@ -85,7 +100,7 @@ export default function PatientECGCard({ patient, ecgData, onClick }: Props) {
         <div className="flex items-baseline space-x-1">
           <span className="text-xs text-[#7A8A76] uppercase tracking-wider font-semibold">BPM:</span>
           <span className="font-mono-data text-2xl font-bold" style={{ color: sColor }}>
-            {currentBpm > 0 ? currentBpm : '--'}
+            {isDisabled ? 'OFF' : currentBpm > 0 ? currentBpm : '--'}
           </span>
         </div>
         

@@ -10,7 +10,7 @@ export default function SignUpPage() {
           <Image src="/logo/logo.png" width={60} height={60} alt="Guardian Pulse" className="rounded-2xl" />
           <div className="text-center">
             <h1 className="font-poppins font-bold text-[#D4B896] text-2xl">Guardian Pulse</h1>
-            <p className="text-[#A8B5A2] text-sm mt-1">Create your admin account</p>
+            <p className="text-[#A8B5A2] text-sm mt-1">Create your account</p>
           </div>
         </div>
 

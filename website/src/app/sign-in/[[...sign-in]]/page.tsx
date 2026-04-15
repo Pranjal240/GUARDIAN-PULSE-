@@ -10,9 +10,16 @@ import { AlertTriangle, Info } from 'lucide-react';
 export default function SignInPage() {
   const [selectedRole, setSelectedRole] = useState<'patient' | 'admin'>('patient');
 
+  // Write role to localStorage ONLY on explicit user click (not on mount)
+  const handleSelectRole = (role: 'patient' | 'admin') => {
+    setSelectedRole(role);
+    localStorage.setItem('guardian_pulse_login_role', role);
+  };
+
+  // On mount, clear any stale role — default is always 'patient'
   useEffect(() => {
-    localStorage.setItem('guardian_pulse_login_role', selectedRole);
-  }, [selectedRole]);
+    localStorage.setItem('guardian_pulse_login_role', 'patient');
+  }, []);
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen w-full bg-[#141A14] relative overflow-hidden">
@@ -128,7 +135,7 @@ export default function SignInPage() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedRole('patient')}
+              onClick={() => handleSelectRole('patient')}
               className={`flex-1 p-4 rounded-xl border-2 transition-all text-left group relative overflow-hidden ${
                 selectedRole === 'patient'
                   ? 'bg-[rgba(212,184,150,0.08)] border-[#D4B896] shadow-[0_0_20px_rgba(212,184,150,0.1)]'
@@ -153,7 +160,7 @@ export default function SignInPage() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedRole('admin')}
+              onClick={() => handleSelectRole('admin')}
               className={`flex-1 p-4 rounded-xl border-2 transition-all text-left group relative overflow-hidden ${
                 selectedRole === 'admin'
                   ? 'bg-[rgba(212,184,150,0.08)] border-[#D4B896] shadow-[0_0_20px_rgba(212,184,150,0.1)]'

@@ -121,6 +121,22 @@ export function stopDemoDataSeeder() {
 }
 
 function writeDemoReading(userId: string) {
+  // Check if monitoring is disabled by admin before writing
+  import('firebase/database').then(({ get: fbGet }) => {
+    fbGet(ref(db, `users/${userId}/monitorDisabled`)).then((snap) => {
+      if (snap.exists() && snap.val() === true) {
+        // Monitor is disabled — don't write any ECG data
+        return;
+      }
+      _doWriteDemoReading(userId);
+    }).catch(() => {
+      // On error, still write (fail-open for data seeding)
+      _doWriteDemoReading(userId);
+    });
+  });
+}
+
+function _doWriteDemoReading(userId: string) {
   const state = getOrCreateState(userId);
 
   // Decrement target shift counter
@@ -196,7 +212,7 @@ export async function createEmergencyAlert(userId: string) {
     const alertRef = push(ref(db, 'alerts'));
     await set(alertRef, {
       userId,
-      type: 'cardiac',
+      type: 'emergency_sos',
       status: 'active',
       createdAt: Date.now(),
       timeline: [
@@ -230,8 +246,8 @@ export async function seedDemoVitals(
 ) {
   try {
     const baseline = generatePatientBaseline(userId);
+
     const profileData: Record<string, unknown> = {
-      role: 'patient',
       mode: 'normal',
       lastActive: Date.now(),
       emergencyContact: '112',
@@ -240,6 +256,10 @@ export async function seedDemoVitals(
         updatedAt: Date.now(),
       },
     };
+
+    // NEVER set role here — roles are managed exclusively
+    // by the auth flow in page.tsx (root). Setting role here
+    // was causing new users to sometimes get incorrect roles.
 
     // Only write profile fields if they're non-empty
     if (profile?.name) profileData.name = profile.name;
@@ -257,15 +277,76 @@ export async function seedDemoVitals(
  */
 export async function syncVitalsToFirebase(userId: string, vitals: Record<string, number>) {
   try {
-    // Update lastVitals AND lastActive on user root for sorting
+    // Check if monitoring is disabled
+    const { get: fbGet } = await import('firebase/database');
+    const monitorSnap = await fbGet(ref(db, `users/${userId}/monitorDisabled`));
+    const isDisabled = monitorSnap.exists() && monitorSnap.val() === true;
+
+    // Update lastActive regardless
     await update(ref(db, `users/${userId}`), {
       lastActive: Date.now(),
     });
-    await update(ref(db, `users/${userId}/lastVitals`), {
-      ...vitals,
-      updatedAt: Date.now(),
-    });
+
+    if (isDisabled) {
+      // Write zeroed vitals when monitor is disabled
+      const zeroedVitals: Record<string, number> = {};
+      for (const key of Object.keys(vitals)) {
+        zeroedVitals[key] = 0;
+      }
+      await update(ref(db, `users/${userId}/lastVitals`), {
+        ...zeroedVitals,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await update(ref(db, `users/${userId}/lastVitals`), {
+        ...vitals,
+        updatedAt: Date.now(),
+      });
+    }
   } catch {
     // Silent fail — vitals sync is best-effort
+  }
+}
+
+/**
+ * One-time migration: convert old 'cardiac' alerts that were actually
+ * manual SOS triggers into the correct 'emergency_sos' type.
+ * Detects SOS alerts by checking timeline for "Emergency SOS" text.
+ */
+let _migrationRan = false;
+export async function migrateCardiacToSOS() {
+  if (_migrationRan) return; // Only run once per session
+  _migrationRan = true;
+
+  try {
+    const { get } = await import('firebase/database');
+    const alertsSnap = await get(ref(db, 'alerts'));
+    if (!alertsSnap.exists()) return;
+
+    const updates: Record<string, string> = {};
+    alertsSnap.forEach((child) => {
+      const val = child.val();
+      if (val.type === 'cardiac' && val.timeline) {
+        // Check if timeline mentions "Emergency SOS"
+        const isSOSAlert = val.timeline.some(
+          (t: { step?: string }) => t.step && t.step.toLowerCase().includes('emergency sos')
+        );
+        if (isSOSAlert) {
+          updates[`alerts/${child.key}/type`] = 'emergency_sos';
+        }
+      }
+    });
+
+    // Apply all updates in one batch
+    const numUpdates = Object.keys(updates).length;
+    if (numUpdates > 0) {
+      const { set } = await import('firebase/database');
+      for (const [path, value] of Object.entries(updates)) {
+        await set(ref(db, path), value);
+      }
+      console.log(`[Migration] Converted ${numUpdates} cardiac alerts → emergency_sos`);
+    }
+  } catch (err) {
+    console.error('[Migration] Failed to migrate alerts:', err);
   }
 }

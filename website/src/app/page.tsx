@@ -47,6 +47,30 @@ export default function Home() {
               avatarUrl: user.imageUrl || snapshot.val().avatarUrl || '',
             });
           }
+
+          // ─── SECURITY CHECK: Verify admin role is legitimate ───
+          // If user has admin role but is NOT super-admin and has NO approved admin_request,
+          // demote to pending_admin to prevent unauthorized admin access.
+          const isSuperAdmin = email.toLowerCase() === SUPER_ADMIN_EMAIL;
+          if (role === 'admin' && !isSuperAdmin) {
+            const adminReqRef = ref(db, `admin_requests/${userId}`);
+            const adminReqSnap = await get(adminReqRef);
+            if (!adminReqSnap.exists() || adminReqSnap.val().status !== 'approved') {
+              // Admin role without approved request — demote
+              role = 'pending_admin';
+              await set(ref(db, `users/${userId}/role`), 'pending_admin');
+              // Create a new admin request if none exists
+              if (!adminReqSnap.exists()) {
+                await set(adminReqRef, {
+                  email: email,
+                  name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown',
+                  avatarUrl: user.imageUrl || '',
+                  requestedAt: Date.now(),
+                  status: 'pending',
+                });
+              }
+            }
+          }
         } else {
           // NEW USER — determine initial role
           const savedRole = localStorage.getItem('guardian_pulse_login_role');
@@ -77,6 +101,7 @@ export default function Home() {
               timestamp: Date.now(),
             });
           } else {
+            // Default: always patient. This prevents ANY unintentional admin access.
             role = 'patient';
           }
 
@@ -122,6 +147,10 @@ export default function Home() {
                 details: `${email} requested admin access (existing patient)`,
                 timestamp: Date.now(),
               });
+            } else if (adminReqSnap.val().status === 'approved') {
+              // Previously approved — restore admin role (may have been reset by a bug)
+              role = 'admin';
+              await set(ref(db, `users/${userId}/role`), 'admin');
             } else if (adminReqSnap.val().status === 'rejected') {
               // Previously rejected — allow re-request
               role = 'pending_admin';

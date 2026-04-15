@@ -8,6 +8,8 @@ import {
   limitToLast,
   get,
   off,
+  set,
+  update,
 } from "firebase/database";
 import { db } from "./firebase";
 
@@ -27,6 +29,8 @@ export interface Patient {
   needsSupport?: boolean
   avatarUrl?: string
   lastActive?: number
+  monitorDisabled?: boolean
+  isOffline?: boolean
   lastVitals?: {
     updatedAt?: number
     [key: string]: unknown
@@ -60,6 +64,7 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   mediaUrl?: string;
+  read?: boolean;
 }
 
 export interface SystemStats {
@@ -97,6 +102,46 @@ export interface AuditLogEntry {
 // Hooks
 // ----------------------------------------------------------------------------
 
+// Fetch ALL users (any role) — used for alert/user lookups
+export function useAllUsers() {
+  const [data, setData] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onValue(
+      ref(db, "users"),
+      (snapshot) => {
+        const users: Patient[] = [];
+        snapshot.forEach((child) => {
+          const val = child.val();
+          const computedName = val.name 
+            || `${val.firstName || ''} ${val.lastName || ''}`.trim() 
+            || (val.email ? val.email.split('@')[0] : '')
+            || 'User';
+            
+          const lastActive = val.lastActive || 0;
+          const isOffline = (Date.now() - lastActive) > 36 * 60 * 60 * 1000;
+          const finalMonitorDisabled = val.monitorDisabled === true || isOffline;
+            
+          users.push({ 
+            ...val,
+            userId: child.key || val.userId || '', 
+            name: computedName,
+            email: (val.email || '').toLowerCase().trim(),
+            isOffline,
+            monitorDisabled: finalMonitorDisabled
+          });
+        });
+        setData(users);
+        setLoading(false);
+      },
+    );
+    return () => unsubscribe();
+  }, []);
+
+  return { data, loading };
+}
+
 export function useAllPatients() {
   const [data, setData] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,11 +159,18 @@ export function useAllPatients() {
             || `${val.firstName || ''} ${val.lastName || ''}`.trim() 
             || (val.email ? val.email.split('@')[0] : '')
             || 'Patient';
+            
+          const lastActive = val.lastActive || 0;
+          const isOffline = (Date.now() - lastActive) > 36 * 60 * 60 * 1000;
+          const finalMonitorDisabled = val.monitorDisabled === true || isOffline;
+            
           patients.push({ 
             ...val,
             userId: child.key || val.userId || '', 
             name: computedName,
             email: (val.email || '').toLowerCase().trim(),
+            isOffline,
+            monitorDisabled: finalMonitorDisabled
           });
         });
 
@@ -356,6 +408,19 @@ export function useChatMessages(userId: string) {
   return { data, loading, error };
 }
 
+export async function markMessagesAsRead(messageIds: string[]) {
+  if (!messageIds || messageIds.length === 0) return;
+  const updates: Record<string, unknown> = {};
+  messageIds.forEach((id) => {
+    updates[`chat_messages/${id}/read`] = true;
+  });
+  try {
+    await update(ref(db), updates);
+  } catch (err) {
+    console.error("Failed to mark messages as read:", err);
+  }
+}
+
 export function useUserProfile(userId: string) {
   const [data, setData] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
@@ -589,7 +654,7 @@ export function classifyAlertType(alertType: string = 'unknown') {
     case "support_request":
       return { color: "#D4B896", icon: "LifeBuoy", label: "Support Request" };
     case "emergency_sos":
-      return { color: "#E05252", icon: "Phone", label: "Emergency SOS" };
+      return { color: "#E05252", icon: "Phone", label: "SOS Emergency" };
     default:
       return { color: "#E05252", icon: "AlertCircle", label: alertType || "Unknown Alert" };
   }
@@ -720,4 +785,69 @@ export function usePatientDemoVitals(userId: string) {
 export function useSupportRequestCount() {
   const { data: patients } = useAllPatients()
   return patients.filter(p => p.needsSupport).length
+}
+
+// ─── Monitor Status Hook ─────────────────────────────
+// Subscribes to users/{userId}/monitorDisabled in real-time
+export function useMonitorStatus(userId: string) {
+  const [disabled, setDisabled] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false)
+      return
+    }
+    const monitorRef = ref(db, `users/${userId}`)
+    const unsub = onValue(monitorRef, (snap) => {
+      if (snap.exists()) {
+        const val = snap.val();
+        const lastActive = val.lastActive || 0;
+        const isOffline = (Date.now() - lastActive) > 36 * 60 * 60 * 1000;
+        const finalMonitorDisabled = val.monitorDisabled === true || isOffline;
+        setDisabled(finalMonitorDisabled);
+      } else {
+        setDisabled(false);
+      }
+      setLoading(false)
+    })
+    return () => unsub()
+  }, [userId])
+
+  return { disabled, loading }
+}
+
+// ─── Toggle Monitor Utility ──────────────────────────
+// Toggles the monitorDisabled field and writes an audit log entry
+export async function toggleMonitor(
+  userId: string,
+  patientName: string,
+  newDisabled: boolean,
+  adminUserId: string,
+  adminName: string,
+) {
+  try {
+    // Set the monitorDisabled flag
+    await update(ref(db, `users/${userId}`), {
+      monitorDisabled: newDisabled,
+    })
+
+    // Write audit log entry
+    await set(ref(db, `audit_log/${Date.now()}_monitor_${userId.slice(0, 8)}`), {
+      action: newDisabled ? 'monitor_disabled' : 'monitor_enabled',
+      performedBy: adminUserId,
+      performedByName: adminName,
+      targetUserId: userId,
+      targetUserName: patientName,
+      details: newDisabled
+        ? `Disabled monitoring for ${patientName}`
+        : `Re-enabled monitoring for ${patientName}`,
+      timestamp: Date.now(),
+    })
+
+    return true
+  } catch (err) {
+    console.error('Failed to toggle monitor:', err)
+    return false
+  }
 }

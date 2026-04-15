@@ -1,0 +1,72 @@
+# Guardian Pulse — Raspberry Pi Dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Core Science ──────────────────────────────
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+PyWavelets>=1.4.0
+
+# ── Hardware Drivers ──────────────────────────
+smbus2>=0.4.2                          # MPU6050 I2C
+adafruit-circuitpython-ads1x15>=2.2.0  # ADS1115 ADC
+board                                   # GPIO abstraction
+busio                                   # I2C/SPI
+
+# ── MQTT ─────────────────────────────────────
+paho-mqtt>=2.0.0                       # HiveMQ publisher
+
+# ── Utilities ────────────────────────────────
+python-dateutil>=2.8.0
+
+# ─────────────────────────────────────────────
+# SETUP INSTRUCTIONS
+# ─────────────────────────────────────────────
+#
+# 1. ENABLE I2C ON RASPBERRY PI
+#    sudo raspi-config
+#    → Interface Options → I2C → Enable
+#    sudo reboot
+#
+# 2. VERIFY I2C DEVICES
+#    sudo apt install i2c-tools
+#    i2cdetect -y 1
+#    Expected:
+#      0x48 → ADS1115
+#      0x68 → MPU6050
+#
+# 3. INSTALL DEPENDENCIES
+#    pip install -r requirements.txt
+#
+# 4. GENERATE FAKE DATASET (run once on PC or Pi)
+#    python generate_dataset.py
+#
+# 5. TRAIN MODEL (run once on PC or Pi)
+#    python train_model.py
+#    → Saves tremor_model.pkl and selector.pkl
+#
+# 6. CONFIGURE HIVEMQ (in ecg_mqtt_publisher.py and main_pipeline.py)
+#    HIVEMQ_HOST     = "your-cluster.hivemq.cloud"
+#    HIVEMQ_USERNAME = "your_username"
+#    HIVEMQ_PASSWORD = "your_password"
+#
+# 7. RUN IN TWO TERMINALS ON PI
+#
+#    Terminal 1 — ECG stream to MQTT:
+#      python ecg_mqtt_publisher.py
+#
+#    Terminal 2 — Tremor ML pipeline:
+#      python main_pipeline.py
+#
+# ─────────────────────────────────────────────
+# MQTT TOPICS PUBLISHED
+# ─────────────────────────────────────────────
+#
+#  guardian_pulse/ecg/raw          → every ECG sample (250 Hz)
+#  guardian_pulse/ecg/batch        → 100-sample batches
+#  guardian_pulse/ecg/heartrate    → HR in BPM every 10 sec
+#  guardian_pulse/tremor/prediction → ML result every 2.56 sec
+#  guardian_pulse/detection/flags  → all 3 flags status
+#  guardian_pulse/detection/crisis → fires when all 3 flags hold 30 sec
+#  guardian_pulse/device/status    → online/offline LWT
