@@ -812,12 +812,12 @@ export function useMonitorStatus(userId: string) {
         
         if (!finalMonitorDisabled && val.monitorEnabledAt) {
           const diff = Date.now() - val.monitorEnabledAt;
-          if (diff < 6000) { // 6 seconds calculating state
+          if (diff < 4000) { // 4 seconds calculating state
              setIsCalculating(true);
              if (calcTimeout) clearTimeout(calcTimeout);
              calcTimeout = setTimeout(() => {
                setIsCalculating(false);
-             }, 6000 - diff);
+             }, 4000 - diff);
           } else {
              setIsCalculating(false);
           }

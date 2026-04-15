@@ -125,7 +125,7 @@ export default function PatientDashboard() {
   const { user } = useUser();
   const { data: ecgData, loading } = usePatientECG(user?.id || "", 60);
   const { data: chatMessages } = useChatMessages(user?.id || "");
-  const { disabled: monitorDisabled } = useMonitorStatus(user?.id || "");
+  const { disabled: monitorDisabled, isCalculating } = useMonitorStatus(user?.id || "");
 
   const [time, setTime] = useState(new Date());
   const [chatInput, setChatInput] = useState("");
@@ -614,23 +614,29 @@ export default function PatientDashboard() {
 
   const latest = ecgData.length > 0 ? ecgData[ecgData.length - 1] : null;
   const currentBpm = monitorDisabled ? 0 : latest?.bpm || 72;
-  const status = monitorDisabled
-    ? ("critical" as const)
-    : calculateBpmStatus(currentBpm);
-  const sColor = monitorDisabled
-    ? "#E05252"
-    : status === "critical"
+  const status = isCalculating 
+    ? ("calculating" as const)
+    : monitorDisabled
+      ? ("critical" as const)
+      : calculateBpmStatus(currentBpm);
+  const sColor = isCalculating
+    ? "#D4B896"
+    : monitorDisabled
       ? "#E05252"
-      : status === "warning"
-        ? "#D4943A"
-        : "#4CAF78";
-  const statusLabel = monitorDisabled
-    ? "Disabled"
-    : status === "critical"
-      ? "Critical"
-      : status === "warning"
-        ? "Elevated"
-        : "Normal";
+      : status === "critical"
+        ? "#E05252"
+        : status === "warning"
+          ? "#D4943A"
+          : "#4CAF78";
+  const statusLabel = isCalculating
+    ? "Calculating..."
+    : monitorDisabled
+      ? "Disabled"
+      : status === "critical"
+        ? "Critical"
+        : status === "warning"
+          ? "Elevated"
+          : "Normal";
 
   // Zero out all vitals when monitoring is disabled
   const displayVitals = monitorDisabled
@@ -650,14 +656,16 @@ export default function PatientDashboard() {
       }
     : vitals;
 
-  const stressLevel =
-    displayVitals.stress < 30
+  const stressLevel = isCalculating
+    ? "..."
+    : displayVitals.stress < 30
       ? "Low"
       : displayVitals.stress < 55
         ? "Moderate"
         : "High";
-  const stressColor =
-    displayVitals.stress < 30
+  const stressColor = isCalculating
+    ? "#D4B896"
+    : displayVitals.stress < 30
       ? "#4CAF78"
       : displayVitals.stress < 55
         ? "#D4943A"
@@ -740,12 +748,12 @@ export default function PatientDashboard() {
             <h1 className="font-poppins font-bold text-base md:text-xl text-[#F0E6D3]">
               Guardian Pulse
             </h1>
-            <p
-              className={`text-[9px] md:text-[10px] uppercase tracking-[0.15em] md:tracking-[0.2em] font-semibold ${monitorDisabled ? "text-[#E05252]" : "text-[#D4B896]"}`}
+            <span
+              className={`text-[9px] md:text-[10px] uppercase tracking-[0.15em] md:tracking-[0.2em] font-semibold ${isCalculating ? "text-[#D4B896]" : monitorDisabled ? "text-[#E05252]" : "text-[#D4B896]"}`}
             >
-              Patient Portal •{" "}
-              {monitorDisabled ? "Monitoring Paused" : "Online"}
-            </p>
+              <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full inline-block mr-1.5 md:mr-2 align-middle ${isCalculating ? "bg-[#D4B896]" : monitorDisabled ? "bg-[#E05252]" : "bg-[#4CAF78] live-dot shadow-[0_0_6px_#4CAF78]"}`} />
+              {isCalculating ? "Init" : monitorDisabled ? "Monitoring Paused" : "Online"}
+            </span>
           </div>
         </div>
         <div className="flex items-center space-x-2 md:space-x-5">
@@ -818,6 +826,20 @@ export default function PatientDashboard() {
             {...fadeUp(0.15)}
             className="lg:col-span-4 bg-[#141E18] rounded-2xl md:rounded-3xl p-5 md:p-6 border border-[rgba(212,184,150,0.1)] relative overflow-hidden flex flex-col items-center justify-center min-h-[260px] md:min-h-[320px]"
           >
+            {isCalculating && (
+              <div className="absolute inset-0 bg-[#0C1210] flex flex-col justify-center items-center z-10 transition-opacity">
+                <svg viewBox="0 0 400 90" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
+                  <line strokeDasharray="5,5" x1="0" y1="45" x2="400" y2="45" stroke="#D4B896" strokeWidth="2" opacity="0.4" className="animate-pulse" />
+                </svg>
+                <span className="text-[#D4B896] text-[10px] uppercase tracking-widest font-mono font-bold mt-2 relative z-10 bg-[#0C1210] px-2">Calculating...</span>
+              </div>
+            )}
+            {monitorDisabled && !isCalculating && (
+              <div className="absolute inset-0 bg-[#0C1210] flex flex-col justify-center items-center z-10 transition-opacity">
+                <div className="w-full h-0 border-b-2 border-[#E05252] border-dashed opacity-50 relative"></div>
+                <span className="text-[#E05252] text-[10px] uppercase tracking-widest font-mono font-bold mt-2 relative z-10 bg-[#0C1210] px-2 shadow-sm">Sensor Disconnected</span>
+              </div>
+            )}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div
                 className="w-48 md:w-64 h-48 md:h-64 rounded-full blur-[80px] opacity-20"
@@ -844,7 +866,7 @@ export default function PatientDashboard() {
                 className="font-mono text-6xl md:text-8xl font-black tracking-tighter"
                 style={{ color: sColor }}
               >
-                {currentBpm}
+                {isCalculating ? "..." : currentBpm === 0 ? "..." : currentBpm}
               </motion.span>
               <span className="text-[#9BA897] text-lg md:text-xl font-bold">
                 BPM
@@ -870,7 +892,7 @@ export default function PatientDashboard() {
             {[
               {
                 label: "Blood O₂",
-                value: `${displayVitals.spO2}%`,
+                value: isCalculating ? "..." : monitorDisabled ? "0%" : `${displayVitals.spO2}%`,
                 icon: Droplets,
                 color: monitorDisabled
                   ? "#6B7F67"
@@ -886,7 +908,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Stress",
-                value: monitorDisabled ? "N/A" : stressLevel,
+                value: isCalculating ? "..." : monitorDisabled ? "N/A" : stressLevel,
                 icon: Brain,
                 color: monitorDisabled ? "#6B7F67" : stressColor,
                 sub: `${displayVitals.stress}/100`,
@@ -896,7 +918,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "HRV",
-                value: `${displayVitals.hrv}ms`,
+                value: isCalculating ? "..." : monitorDisabled ? "0ms" : `${displayVitals.hrv}ms`,
                 icon: Activity,
                 color: monitorDisabled ? "#6B7F67" : "#5B9BD5",
                 trend: displayVitals.hrv > 40 ? "up" : "down",
@@ -905,7 +927,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Body Temp",
-                value: monitorDisabled ? "0°F" : `${displayVitals.bodyTemp}°F`,
+                value: isCalculating ? "..." : monitorDisabled ? "0°F" : `${displayVitals.bodyTemp}°F`,
                 icon: Thermometer,
                 color: monitorDisabled
                   ? "#6B7F67"
@@ -920,7 +942,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Resp Rate",
-                value: `${displayVitals.respRate}`,
+                value: isCalculating ? "..." : monitorDisabled ? "0" : `${displayVitals.respRate}`,
                 icon: Wind,
                 color: monitorDisabled ? "#6B7F67" : "#4CAF78",
                 sub: "br/min",
@@ -928,7 +950,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Blood Pressure",
-                value: `${displayVitals.bloodPressureSys}/${displayVitals.bloodPressureDia}`,
+                value: isCalculating ? "..." : monitorDisabled ? "0/0" : `${displayVitals.bloodPressureSys}/${displayVitals.bloodPressureDia}`,
                 icon: Heart,
                 color: monitorDisabled
                   ? "#6B7F67"
@@ -944,7 +966,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Heart Rhythm",
-                value: `${displayVitals.heartRhythm}%`,
+                value: isCalculating ? "..." : monitorDisabled ? "0%" : `${displayVitals.heartRhythm}%`,
                 icon: Waves,
                 color: monitorDisabled
                   ? "#6B7F67"
@@ -960,7 +982,7 @@ export default function PatientDashboard() {
               },
               {
                 label: "Tremor Index",
-                value: `${displayVitals.tremorScore}`,
+                value: isCalculating ? "..." : monitorDisabled ? "0" : `${displayVitals.tremorScore}`,
                 icon: Activity,
                 color: monitorDisabled
                   ? "#6B7F67"
@@ -1117,7 +1139,7 @@ export default function PatientDashboard() {
                   className="font-mono font-bold text-base md:text-lg"
                   style={{ color: stressColor }}
                 >
-                  {displayVitals.stress}
+                  {isCalculating ? "..." : displayVitals.stress}
                 </span>
                 <span className="text-[10px] md:text-xs text-[#7A8A76]">
                   100
@@ -1152,7 +1174,7 @@ export default function PatientDashboard() {
                     animate={{ scale: 1 }}
                     className="font-mono text-2xl md:text-3xl font-bold text-[#F0E6D3]"
                   >
-                    {displayVitals.bloodPressureSys}
+                    {isCalculating ? "..." : displayVitals.bloodPressureSys}
                   </motion.p>
                   <p className="text-[9px] md:text-[10px] text-[#7A8A76] uppercase tracking-wider">
                     Systolic
@@ -1168,7 +1190,7 @@ export default function PatientDashboard() {
                     animate={{ scale: 1 }}
                     className="font-mono text-2xl md:text-3xl font-bold text-[#F0E6D3]"
                   >
-                    {displayVitals.bloodPressureDia}
+                    {isCalculating ? "..." : displayVitals.bloodPressureDia}
                   </motion.p>
                   <p className="text-[9px] md:text-[10px] text-[#7A8A76] uppercase tracking-wider">
                     Diastolic
@@ -1180,15 +1202,17 @@ export default function PatientDashboard() {
               </div>
               <div className="mt-2 md:mt-3 text-center">
                 <span
-                  className={`text-[10px] md:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${monitorDisabled ? "text-[#6B7F67] border-[#6B7F67]/30 bg-[#6B7F67]/10" : displayVitals.bloodPressureSys <= 120 ? "text-[#4CAF78] border-[#4CAF78]/30 bg-[#4CAF78]/10" : displayVitals.bloodPressureSys <= 130 ? "text-[#D4943A] border-[#D4943A]/30 bg-[#D4943A]/10" : "text-[#E05252] border-[#E05252]/30 bg-[#E05252]/10"}`}
+                  className={`text-[10px] md:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${isCalculating ? "text-[#D4B896] border-[#D4B896]/30 bg-[#D4B896]/10" : monitorDisabled ? "text-[#6B7F67] border-[#6B7F67]/30 bg-[#6B7F67]/10" : displayVitals.bloodPressureSys <= 120 ? "text-[#4CAF78] border-[#4CAF78]/30 bg-[#4CAF78]/10" : displayVitals.bloodPressureSys <= 130 ? "text-[#D4943A] border-[#D4943A]/30 bg-[#D4943A]/10" : "text-[#E05252] border-[#E05252]/30 bg-[#E05252]/10"}`}
                 >
-                  {monitorDisabled
-                    ? "Disabled"
-                    : displayVitals.bloodPressureSys <= 120
-                      ? "Normal"
-                      : displayVitals.bloodPressureSys <= 130
-                        ? "Elevated"
-                        : "High"}
+                  {isCalculating
+                    ? "Calculating..."
+                    : monitorDisabled
+                      ? "Disabled"
+                      : displayVitals.bloodPressureSys <= 120
+                        ? "Normal"
+                        : displayVitals.bloodPressureSys <= 130
+                          ? "Elevated"
+                          : "High"}
                 </span>
               </div>
             </motion.div>
