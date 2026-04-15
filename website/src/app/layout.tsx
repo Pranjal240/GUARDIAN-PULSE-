@@ -7,7 +7,6 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Guardian Pulse — Admin Dashboard',
   description: 'Real-time medical monitoring dashboard for healthcare professionals',
-  icons: { icon: '/logo/logo.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
