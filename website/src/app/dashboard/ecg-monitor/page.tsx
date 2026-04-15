@@ -12,27 +12,31 @@ import MonitorToggle from "@/components/MonitorToggle";
 function PatientEcgCard({ patient }: { patient: Patient }) {
   const { data: ecg } = usePatientECG(patient.userId || "", 60);
   const vitals = useLiveVitals(patient.userId || "");
-  const { disabled: monitorOff } = useMonitorStatus(patient.userId || "");
+  const { disabled: monitorOff, isCalculating } = useMonitorStatus(patient.userId || "");
 
   const bpm = monitorOff ? 0 : vitals.bpm;
-  const status = monitorOff
-    ? "disabled"
-    : bpm >= 130 || (bpm > 0 && bpm < 50)
-      ? "critical"
-      : bpm >= 100
-        ? "warning"
-        : "normal";
-  const statusLabel = monitorOff
-    ? "Disabled"
-    : bpm >= 130
-      ? "Tachycardia"
-      : bpm < 50 && bpm > 0
-        ? "Bradycardia"
+  const status = isCalculating 
+    ? "calculating"
+    : monitorOff
+      ? "disabled"
+      : bpm >= 130 || (bpm > 0 && bpm < 50)
+        ? "critical"
         : bpm >= 100
-          ? "Elevated"
-          : bpm === 0
-            ? "Offline"
-            : "Normal";
+          ? "warning"
+          : "normal";
+  const statusLabel = isCalculating
+    ? "Calculating..."
+    : monitorOff
+      ? "Disabled"
+      : bpm >= 130
+        ? "Tachycardia"
+        : bpm < 50 && bpm > 0
+          ? "Bradycardia"
+          : bpm >= 100
+            ? "Elevated"
+            : bpm === 0
+              ? "Offline"
+              : "Normal";
   const ecgData = monitorOff ? [] : ecg.map((r) => r.voltage || 0);
 
   const initials =
@@ -91,7 +95,9 @@ function PatientEcgCard({ patient }: { patient: Patient }) {
                 ? "badge-critical"
                 : status === "warning"
                   ? "badge-warning"
-                  : "badge-normal"
+                  : status === "calculating"
+                    ? "badge-neutral"
+                    : "badge-normal"
           }`}
         >
           {statusLabel}
@@ -110,7 +116,14 @@ function PatientEcgCard({ patient }: { patient: Patient }) {
       </div>
 
       {/* ECG Chart */}
-      {monitorOff ? (
+      {isCalculating ? (
+        <div className="h-[90px] w-full flex items-center justify-center bg-[#1C1515] rounded-xl relative mb-2">
+          <svg viewBox="0 0 400 90" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
+            <line strokeDasharray="5,5" x1="0" y1="45" x2="400" y2="45" stroke="#D4B896" strokeWidth="2" opacity="0.4" className="animate-pulse" />
+          </svg>
+          <span className="text-[#D4B896] text-[9px] font-mono uppercase tracking-[0.2em] relative z-10 bg-[#1C1515] px-2">Calculating...</span>
+        </div>
+      ) : monitorOff ? (
         <div className="h-[90px] w-full flex items-center justify-center bg-[#1C1515] rounded-xl relative mb-2">
           <svg viewBox="0 0 400 90" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
             <line x1="0" y1="45" x2="400" y2="45" stroke="#E05252" strokeWidth="2" opacity="0.4" />
@@ -125,22 +138,24 @@ function PatientEcgCard({ patient }: { patient: Patient }) {
       <div className="mt-2 flex items-center justify-between">
         <span
           className={`font-mono-data text-xl font-bold ${
-            status === "critical"
-              ? "text-[#E05252]"
-              : status === "warning"
-                ? "text-[#E8A838]"
-                : "text-[#F2E8D9]"
+            isCalculating
+              ? "text-[#D4B896]" 
+              : status === "critical"
+                ? "text-[#E05252]"
+                : status === "warning"
+                  ? "text-[#E8A838]"
+                  : "text-[#F2E8D9]"
           }`}
         >
-          {monitorOff ? "OFF" : bpm === 0 ? "--" : bpm}{" "}
+          {isCalculating ? "..." : monitorOff ? "OFF" : bpm === 0 ? "--" : bpm}{" "}
           <span className="text-xs text-[#6B7F67] font-normal">BPM</span>
         </span>
         <div className="flex items-center gap-1.5">
           <div
-            className={`w-2 h-2 rounded-full ${!monitorOff && vitals.connected ? "bg-[#5CB85C] live-dot" : "bg-[#6B7F67]"}`}
+            className={`w-2 h-2 rounded-full ${isCalculating ? "bg-[#D4B896]" : !monitorOff && vitals.connected ? "bg-[#5CB85C] live-dot" : "bg-[#6B7F67]"}`}
           />
           <span className="text-[10px] text-[#6B7F67]">
-            {!monitorOff && vitals.connected ? "Live" : "Offline"}
+            {isCalculating ? "Init" : !monitorOff && vitals.connected ? "Live" : "Offline"}
           </span>
         </div>
       </div>

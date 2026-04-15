@@ -36,7 +36,7 @@ import Link from "next/link";
 function PatientRow({ patient, index }: { patient: Patient; index: number }) {
   const vitals = useLiveVitals(patient.userId || "");
   const demoVitals = usePatientDemoVitals(patient.userId || "");
-  const { disabled: monitorOff } = useMonitorStatus(patient.userId || "");
+  const { disabled: monitorOff, isCalculating } = useMonitorStatus(patient.userId || "");
   const [expanded, setExpanded] = useState(false);
 
   // Use live vitals if available, otherwise use demo vitals
@@ -118,15 +118,15 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
           <div className="hidden lg:flex items-center gap-3 text-[10px] text-[#9BA897] shrink-0">
             <span className="flex items-center gap-0.5">
               <Droplets className="w-3 h-3 text-[#5B9BD5]" />
-              {monitorOff ? '0' : demoVitals.spO2}%
+              {isCalculating ? '...' : monitorOff ? '0' : demoVitals.spO2}%
             </span>
             <span className="flex items-center gap-0.5">
               <Brain className="w-3 h-3 text-[#D4B896]" />
-              {monitorOff ? '0' : demoVitals.stress}/100
+              {isCalculating ? '...' : monitorOff ? '0' : demoVitals.stress}/100
             </span>
             <span className="flex items-center gap-0.5">
               <Thermometer className="w-3 h-3 text-[#D4943A]" />
-              {monitorOff ? '0' : demoVitals.bodyTemp}°F
+              {isCalculating ? '...' : monitorOff ? '0' : demoVitals.bodyTemp}°F
             </span>
           </div>
         )}
@@ -144,7 +144,7 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                     : "text-[#6B7F67]"
           }`}
         >
-          {status === "disabled" ? "OFF" : bpm === 0 ? "-- BPM" : `${bpm} BPM`}
+          {isCalculating ? "Calc..." : status === "disabled" ? "OFF" : bpm === 0 ? "-- BPM" : `${bpm} BPM`}
         </span>
         {/* Status */}
         <span
@@ -212,37 +212,37 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                   {[
                     {
                       label: "SpO₂",
-                      value: monitorOff ? "0%" : `${demoVitals.spO2}%`,
+                      value: isCalculating ? "..." : monitorOff ? "0%" : `${demoVitals.spO2}%`,
                       icon: Droplets,
                       color: monitorOff || demoVitals.spO2 > 95 ? "#4CAF78" : "#D4943A",
                     },
                     {
                       label: "HRV",
-                      value: monitorOff ? "0ms" : `${demoVitals.hrv}ms`,
+                      value: isCalculating ? "..." : monitorOff ? "0ms" : `${demoVitals.hrv}ms`,
                       icon: Activity,
                       color: "#5B9BD5",
                     },
                     {
                       label: "Stress",
-                      value: monitorOff ? "0/100" : `${demoVitals.stress}/100`,
+                      value: isCalculating ? "..." : monitorOff ? "0/100" : `${demoVitals.stress}/100`,
                       icon: Brain,
                       color: !monitorOff && demoVitals.stress > 50 ? "#E05252" : "#D4B896",
                     },
                     {
                       label: "Temp",
-                      value: monitorOff ? "0°F" : `${demoVitals.bodyTemp}°F`,
+                      value: isCalculating ? "..." : monitorOff ? "0°F" : `${demoVitals.bodyTemp}°F`,
                       icon: Thermometer,
                       color: !monitorOff && demoVitals.bodyTemp > 99 ? "#E05252" : "#D4943A",
                     },
                     {
                       label: "Resp",
-                      value: monitorOff ? "0 br/m" : `${demoVitals.respRate} br/m`,
+                      value: isCalculating ? "..." : monitorOff ? "0 br/m" : `${demoVitals.respRate} br/m`,
                       icon: Wind,
                       color: "#4CAF78",
                     },
                     {
                       label: "BP",
-                      value: monitorOff ? "0/0" : `${demoVitals.bloodPressureSys}/${demoVitals.bloodPressureDia}`,
+                      value: isCalculating ? "..." : monitorOff ? "0/0" : `${demoVitals.bloodPressureSys}/${demoVitals.bloodPressureDia}`,
                       icon: Heart,
                       color:
                         !monitorOff && demoVitals.bloodPressureSys > 130
@@ -251,7 +251,7 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                     },
                     {
                       label: "Sleep",
-                      value: monitorOff ? "0/100" : (demoVitals.heartRhythm
+                      value: isCalculating ? "..." : monitorOff ? "0/100" : (demoVitals.heartRhythm
                         ? `${demoVitals.heartRhythm}/100`
                         : "--"),
                       icon: Activity,
@@ -259,7 +259,7 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                     },
                     {
                       label: "Tremor",
-                      value: monitorOff ? "0/100" : (demoVitals.tremorScore
+                      value: isCalculating ? "..." : monitorOff ? "0/100" : (demoVitals.tremorScore
                         ? `${demoVitals.tremorScore}/100`
                         : "--"),
                       icon: Activity,
@@ -267,7 +267,7 @@ function PatientRow({ patient, index }: { patient: Patient; index: number }) {
                     },
                     {
                       label: "Seizure",
-                      value: monitorOff ? "0%" : (demoVitals.seizureRisk
+                      value: isCalculating ? "..." : monitorOff ? "0%" : (demoVitals.seizureRisk
                         ? `${demoVitals.seizureRisk}%`
                         : "--"),
                       icon: Brain,

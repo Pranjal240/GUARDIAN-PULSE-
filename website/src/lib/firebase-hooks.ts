@@ -792,6 +792,7 @@ export function useSupportRequestCount() {
 export function useMonitorStatus(userId: string) {
   const [disabled, setDisabled] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isCalculating, setIsCalculating] = useState(false)
 
   useEffect(() => {
     if (!userId) {
@@ -799,6 +800,8 @@ export function useMonitorStatus(userId: string) {
       return
     }
     const monitorRef = ref(db, `users/${userId}`)
+    let calcTimeout: NodeJS.Timeout;
+    
     const unsub = onValue(monitorRef, (snap) => {
       if (snap.exists()) {
         const val = snap.val();
@@ -806,15 +809,34 @@ export function useMonitorStatus(userId: string) {
         const isOffline = (Date.now() - lastActive) > 36 * 60 * 60 * 1000;
         const finalMonitorDisabled = val.monitorDisabled === true || isOffline;
         setDisabled(finalMonitorDisabled);
+        
+        if (!finalMonitorDisabled && val.monitorEnabledAt) {
+          const diff = Date.now() - val.monitorEnabledAt;
+          if (diff < 6000) { // 6 seconds calculating state
+             setIsCalculating(true);
+             if (calcTimeout) clearTimeout(calcTimeout);
+             calcTimeout = setTimeout(() => {
+               setIsCalculating(false);
+             }, 6000 - diff);
+          } else {
+             setIsCalculating(false);
+          }
+        } else {
+          setIsCalculating(false);
+        }
       } else {
         setDisabled(false);
+        setIsCalculating(false);
       }
       setLoading(false)
     })
-    return () => unsub()
+    return () => {
+      unsub()
+      if (calcTimeout) clearTimeout(calcTimeout);
+    }
   }, [userId])
 
-  return { disabled, loading }
+  return { disabled, loading, isCalculating }
 }
 
 // ─── Toggle Monitor Utility ──────────────────────────
@@ -827,10 +849,16 @@ export async function toggleMonitor(
   adminName: string,
 ) {
   try {
-    // Set the monitorDisabled flag
-    await update(ref(db, `users/${userId}`), {
+    const updateObj: Record<string, any> = {
       monitorDisabled: newDisabled,
-    })
+    };
+    
+    if (!newDisabled) {
+      updateObj.monitorEnabledAt = Date.now();
+    }
+
+    // Set the monitorDisabled flag
+    await update(ref(db, `users/${userId}`), updateObj)
 
     // Write audit log entry
     await set(ref(db, `audit_log/${Date.now()}_monitor_${userId.slice(0, 8)}`), {

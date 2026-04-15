@@ -124,7 +124,7 @@ export default function ECGMonitorPage() {
     : [];
   const vitals = usePatientDemoVitals(selectedPatientId || "");
   const { data: allAlerts } = useAllAlerts(30);
-  const { disabled: selectedMonitorOff } = useMonitorStatus(selectedPatientId || "");
+  const { disabled: selectedMonitorOff, isCalculating: selectedIsCalculating } = useMonitorStatus(selectedPatientId || "");
 
   // Filter alerts for the selected patient
   const patientAlerts = selectedPatientId
@@ -321,25 +321,29 @@ export default function ECGMonitorPage() {
                             <span>Current BPM</span>
                           </div>
                           <div className="font-mono-data text-4xl text-[#F0E6D3]">
-                            {selectedMonitorOff
-                              ? "0"
-                              : selectedEcgData.length > 0
-                                ? selectedEcgData[selectedEcgData.length - 1].bpm
-                                : "--"}
+                            {selectedIsCalculating
+                              ? "..."
+                              : selectedMonitorOff
+                                ? "0"
+                                : selectedEcgData.length > 0
+                                  ? selectedEcgData[selectedEcgData.length - 1].bpm
+                                  : "--"}
                           </div>
                         </div>
                         <div className="card-style p-4">
                           <div className="flex items-center space-x-2 text-[#9BA897] mb-2">
                             <Activity className="w-4 h-4" /> <span>Status</span>
                           </div>
-                          <div className={`font-poppins font-semibold text-xl uppercase ${selectedMonitorOff ? 'text-[#E05252]' : 'text-[#4CAF78]'}`}>
-                            {selectedMonitorOff
-                              ? "DISABLED"
-                              : calculateBpmStatus(
-                                  selectedEcgData.length > 0
-                                    ? selectedEcgData[selectedEcgData.length - 1].bpm
-                                    : 70,
-                                )}
+                          <div className={`font-poppins font-semibold text-xl uppercase ${selectedIsCalculating ? 'text-[#D4B896]' : selectedMonitorOff ? 'text-[#E05252]' : 'text-[#4CAF78]'}`}>
+                            {selectedIsCalculating
+                              ? "CALCULATING..."
+                              : selectedMonitorOff
+                                ? "DISABLED"
+                                : calculateBpmStatus(
+                                    selectedEcgData.length > 0
+                                      ? selectedEcgData[selectedEcgData.length - 1].bpm
+                                      : 70,
+                                  )}
                           </div>
                         </div>
                       </div>
@@ -353,7 +357,7 @@ export default function ECGMonitorPage() {
                               SpO₂
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.spO2}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.spO2}
                               <span className="text-xs text-[#7A8A76] ml-0.5">
                                 %
                               </span>
@@ -364,7 +368,7 @@ export default function ECGMonitorPage() {
                               <Activity className="w-3 h-3" /> HRV
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.hrv}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.hrv}
                               <span className="text-xs text-[#7A8A76] ml-0.5">
                                 ms
                               </span>
@@ -375,7 +379,7 @@ export default function ECGMonitorPage() {
                               <Brain className="w-3 h-3" /> Stress
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.stress}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.stress}
                               <span className="text-xs text-[#7A8A76] ml-0.5">
                                 /100
                               </span>
@@ -386,7 +390,7 @@ export default function ECGMonitorPage() {
                               <Thermometer className="w-3 h-3" /> Body Temp
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.bodyTemp}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.bodyTemp}
                               <span className="text-xs text-[#7A8A76] ml-0.5">
                                 °F
                               </span>
@@ -397,9 +401,9 @@ export default function ECGMonitorPage() {
                               <Heart className="w-3 h-3" /> Blood Pressure
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.bloodPressureSys}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.bloodPressureSys}
                               <span className="text-xs text-[#7A8A76]">/</span>
-                              {selectedMonitorOff ? '0' : vitals.bloodPressureDia}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.bloodPressureDia}
                             </span>
                           </div>
                           <div className="bg-[#1C2B1E] rounded-xl p-3 border border-[rgba(212,184,150,0.08)]">
@@ -407,7 +411,7 @@ export default function ECGMonitorPage() {
                               <Wind className="w-3 h-3" /> Resp Rate
                             </div>
                             <span className="font-mono-data text-xl text-[#F0E6D3]">
-                              {selectedMonitorOff ? '0' : vitals.respRate}
+                              {selectedIsCalculating ? '...' : selectedMonitorOff ? '0' : vitals.respRate}
                               <span className="text-xs text-[#7A8A76] ml-0.5">
                                 br/min
                               </span>
